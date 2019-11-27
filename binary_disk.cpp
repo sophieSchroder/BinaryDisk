@@ -534,6 +534,28 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real rad(0.0), phi(0.0), z(0.0);
   Real v1(0.0), v2(0.0), v3(0.0);
 
+	// local vars for background - not implemented 
+  //Real den, pres;
+
+
+	// Prepare index bounds including ghost cells
+  int il = is - NGHOST;
+  int iu = ie + NGHOST;
+  int jl = js;
+  int ju = je;
+  if (block_size.nx2 > 1) {
+	  jl -= (NGHOST);
+	  ju += (NGHOST);
+  }
+  int kl = ks;
+  int ku = ke;
+  if (block_size.nx3 > 1) {
+	  kl -= (NGHOST);
+	  ku += (NGHOST);
+  }
+
+
+
   //  Initialize density and momenta
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
@@ -560,96 +582,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 }
 
 
-//======================================================================================
-//! \fn void MeshBlock::ProblemGenerator(ParameterInput *pin)
-//  \brief Spherical Coords HSE Envelope problem generator
-//======================================================================================
 
-void MeshBlock::ProblemGenerator(ParameterInput *pin)
-{
-
-  // local vars
-  Real den, pres;
-
-   // Prepare index bounds including ghost cells
-  int il = is - NGHOST;
-  int iu = ie + NGHOST;
-  int jl = js;
-  int ju = je;
-  if (block_size.nx2 > 1) {
-    jl -= (NGHOST);
-    ju += (NGHOST);
-  }
-  int kl = ks;
-  int ku = ke;
-  if (block_size.nx3 > 1) {
-    kl -= (NGHOST);
-    ku += (NGHOST);
-  }
-
-
-  // SETUP THE INITIAL CONDITIONS ON MESH
-  for (int k=kl; k<=ku; k++) {
-    for (int j=jl; j<=ju; j++) {
-      for (int i=il; i<=iu; i++) {
-
-	Real r  = pcoord->x1v(i);
-	Real th = pcoord->x2v(j);
-	Real ph = pcoord->x3v(k);
-
-
-	Real sin_th = sin(th);
-	Real Rcyl = r*sin_th;
-
-	Real sin_ph = sin(ph);
-	Real cos_ph = cos(ph);
-
-
-	// spherical polar coordinates, get local cartesian
-        Real x = r*sin_th*cos_ph;
-        Real y = r*sin_th*sin_ph;
-
-
-	// SS: trying to make initial background
-	// Calculate velocity from driven wind solution
-	Real v1;
-	DrivenWind(r,v1);
-
-	//std:: cout << "driven solution v " << v1  << std::endl;
-	den = wind_mdot / (4.0*3.14159265* r*r * v1);
-
-	// set the density
-	phydro->u(IDN,k,j,i) = den;
-
-	if (NON_BAROTROPIC_EOS){
-		phydro->u(IPR,k,j,i) = den * cs_wind*cs_wind / gamma_gas;
-	}
-
-
-   	// set the momenta components
-	phydro->u(IM1,k,j,i) = den*v1;
-	phydro->u(IM2,k,j,i) = 0.0;
-	phydro->u(IM3,k,j,i) = 0.0;
-
-	// SS: set rotating background when simulation running simulations in rotating ref frame
-        if(rotating_background == 1){
-          phydro->u(IM3,k,j,i) = - Omega[2] * Rcyl;
-
-        }
-
-
-	if (NON_BAROTROPIC_EOS) {
-	  //set the energy
-	  phydro->u(IEN,k,j,i) = phydro->u(IPR,k,j,i)/(gamma_gas-1);
-	  phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
-				     + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
-	}
-
-      }
-    }
-  } // end loop over cells
-  return;
-} // end ProblemGenerator
 
 //======================================================================================
 //! \fn void MeshBlock::UserWorkInLoop(void)
