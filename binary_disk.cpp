@@ -1101,78 +1101,77 @@ void SumGasOnParticleAccels(Mesh *pm, Real (&xi)[3],Real (&ag1i)[3],Real (&ag2i)
 
 
 
-
-//--------------------------------------------------------------------------------------
-//! \fn void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-//                         FaceField &b, Real time, Real dt,
-//                         int is, int ie, int js, int je, int ks, int ke)
-//  \brief OUTFLOW boundary conditions, outer x1 boundary
-
-void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-		  FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh)
-{
-  // copy hydro variables into ghost zones, don't allow inflow
-  for (int n=0; n<(NHYDRO); ++n) {
-    if (n==(IVX)) {
-      for (int k=ks; k<=ke; ++k) {
-	for (int j=js; j<=je; ++j) {
-#pragma simd
-	  for (int i=1; i<=(NGHOST); ++i) {
-	    prim(IVX,k,j,ie+i) =  std::max( 0.0, prim(IVX,k,j,(ie-i+1)) );  // positive velocities only
-	  }
-	}}
-    } else {
-      for (int k=ks; k<=ke; ++k) {
-	for (int j=js; j<=je; ++j) {
-#pragma simd
-	  for (int i=1; i<=(NGHOST); ++i) {
-	    prim(n,k,j,ie+i) = prim(n,k,j,(ie-i+1));
-	  }
-	}}
-    }
-  }
-
-
-  // copy face-centered magnetic fields into ghost zones
-  if (MAGNETIC_FIELDS_ENABLED) {
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma simd
-	for (int i=1; i<=(NGHOST); ++i) {
-	  b.x1f(k,j,(ie+i+1)) = b.x1f(k,j,(ie+1));
-	}
-      }}
-
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je+1; ++j) {
-#pragma simd
-	for (int i=1; i<=(NGHOST); ++i) {
-	  b.x2f(k,j,(ie+i)) = b.x2f(k,j,ie);
-	}
-      }}
-
-    for (int k=ks; k<=ke+1; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma simd
-	for (int i=1; i<=(NGHOST); ++i) {
-	  b.x3f(k,j,(ie+i)) = b.x3f(k,j,ie);
-	}
-      }}
-  }
-
-  return;
-}
-
-
-
-
-
 void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]){
   // set the vector AxB = A x B
   AxB[0] = A[1]*B[2] - A[2]*B[1];
   AxB[1] = A[2]*B[0] - A[0]*B[2];
   AxB[2] = A[0]*B[1] - A[1]*B[0];
 }
+
+
+
+
+
+// //--------------------------------------------------------------------------------------
+// //! \fn void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+// //                         FaceField &b, Real time, Real dt,
+// //                         int is, int ie, int js, int je, int ks, int ke)
+// //  \brief OUTFLOW boundary conditions, outer x1 boundary
+//
+// void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+// 		  FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh)
+// {
+//   // copy hydro variables into ghost zones, don't allow inflow
+//   for (int n=0; n<(NHYDRO); ++n) {
+//     if (n==(IVX)) {
+//       for (int k=ks; k<=ke; ++k) {
+// 	for (int j=js; j<=je; ++j) {
+// #pragma simd
+// 	  for (int i=1; i<=(NGHOST); ++i) {
+// 	    prim(IVX,k,j,ie+i) =  std::max( 0.0, prim(IVX,k,j,(ie-i+1)) );  // positive velocities only
+// 	  }
+// 	}}
+//     } else {
+//       for (int k=ks; k<=ke; ++k) {
+// 	for (int j=js; j<=je; ++j) {
+// #pragma simd
+// 	  for (int i=1; i<=(NGHOST); ++i) {
+// 	    prim(n,k,j,ie+i) = prim(n,k,j,(ie-i+1));
+// 	  }
+// 	}}
+//     }
+//   }
+//
+//
+//   // copy face-centered magnetic fields into ghost zones
+//   if (MAGNETIC_FIELDS_ENABLED) {
+//     for (int k=ks; k<=ke; ++k) {
+//       for (int j=js; j<=je; ++j) {
+// #pragma simd
+// 	for (int i=1; i<=(NGHOST); ++i) {
+// 	  b.x1f(k,j,(ie+i+1)) = b.x1f(k,j,(ie+1));
+// 	}
+//       }}
+//
+//     for (int k=ks; k<=ke; ++k) {
+//       for (int j=js; j<=je+1; ++j) {
+// #pragma simd
+// 	for (int i=1; i<=(NGHOST); ++i) {
+// 	  b.x2f(k,j,(ie+i)) = b.x2f(k,j,ie);
+// 	}
+//       }}
+//
+//     for (int k=ks; k<=ke+1; ++k) {
+//       for (int j=js; j<=je; ++j) {
+// #pragma simd
+// 	for (int i=1; i<=(NGHOST); ++i) {
+// 	  b.x3f(k,j,(ie+i)) = b.x3f(k,j,ie);
+// 	}
+//       }}
+//   }
+//
+//   return;
+// }
 
 
 
