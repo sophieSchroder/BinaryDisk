@@ -153,7 +153,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   rho0 = pin->GetReal("problem","rho0");
   dslope = pin->GetOrAddReal("problem","dslope",0.0);
 
-	// Get parameters for gravitatonal potential of central point mass
+	// Get parameters for gravitatonal potential of central point mass and companion
   Ggrav = pin->GetOrAddReal("problem","Ggrav",6.67408e-8);
   GM1 = pin->GetOrAddReal("problem","GM1",0.0);
 	GM2 = pin->GetOrAddReal("problem","GM2",1.0);
@@ -192,9 +192,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   // enroll the BCs
   if(mesh_bcs[OUTER_X1] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(OUTER_X1, DiodeOuterX1);
-  }
-  if(mesh_bcs[INNER_X1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(INNER_X1, WindInnerX1);
   }
 
 
@@ -427,24 +424,8 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, const AthenaAr
 	// PM1
 	//Real a_r1 = -GM1/pow(r,2);
 	// cell volume avg'd version, see pointmass.cpp sourceterm code.
-	//Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
+	Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
 
-	// SS: Acceleration from CAK approximation
-	Real a_r1 = alpha/(1.0 - alpha) * GM1* (1.0 - gamma_e) *pmb->pcoord->coord_src1_i_(i)/r;
-
-	// set radial accelartaion inside sink to zero
-	if(steady_sink == 1){
-		if(d2 < rsoft2){
-			a_r1 = 0.0;
-		}
-	}
-
-	// set radial accelartaion outside r_stop to zero
-	if(steady_wind == 1){
-		if(r > r_stop){
-			a_r1 = 0.0;
-		}
-	}
 
 	// PM2 gravitational accels in cartesian coordinates
 	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
