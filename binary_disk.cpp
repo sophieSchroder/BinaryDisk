@@ -534,7 +534,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real rad(0.0), phi(0.0), z(0.0);
   Real v1(0.0), v2(0.0), v3(0.0);
 
-	// local vars for background - not implemented 
+	// local vars for background - not implemented
   //Real den, pres;
 
 
@@ -1166,73 +1166,6 @@ void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 
 
 
-void WindInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-		 FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh)
-{
-
-
-  for (int k=ks; k<=ke; ++k) {
-    for (int j=js; j<=je; ++j) {
-#pragma simd
-      for (int i=1; i<=(NGHOST); ++i) {
-	Real r_cell = pco->x1v(is-i);   // Volumen centered r for each ghost cell
-	Real Rcyl = r_cell*sin(pco->x2v(j));
-
-	// calculate velcotuy from driven wind solotion
-	Real v_cell;
-	DrivenWind(r_cell,v_cell);
-	//std:: cout << "driven solution v_cell  in ghost cell " << v_cell << std::endl;
-
-	prim(IVX,k,j,is-i) = v_cell;
-	prim(IVY,k,j,is-i) = 0.0;
-	prim(IVZ,k,j,is-i) = (Omega_wind-Omega[2])*Rcyl;
-
-	// Ghost cells in hydrostatic equilibrium SS
-	//prim(IDN,k,j,is-i) = rho_wind * exp (- GM1 / (cs_wind*cs_wind) * (1.0 / r0 - 1.0 / r_cell ));
-
-	// Ghost cells set with wind solution
-    prim(IDN,k,j,is-i) = wind_mdot / (4.0*3.14159265* r_cell*r_cell * v_cell);
-
-
-	// SS - remove if we decide not to run with isothermal eos
-	if(NON_BAROTROPIC_EOS){
-	  prim(IPR,k,j,is-i) = prim(IDN,k,j,is-i) * cs_wind*cs_wind/gamma_gas;
-	}
-
-      }
-    }
-  }
-
-  // copy face-centered magnetic fields into ghost zones, reflect x1
-  if (MAGNETIC_FIELDS_ENABLED) {
-    for
-      (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma simd
-	for (int i=1; i<=(NGHOST); ++i) {
-	  b.x1f(k,j,(is-i)) = -b.x1f(k,j,(is+i  ));
-	}
-      }}
-
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je+1; ++j) {
-#pragma simd
-	for (int i=1; i<=(NGHOST); ++i) {
-	  b.x2f(k,j,(is-i)) =  b.x2f(k,j,(is+i-1));
-	}
-      }}
-
-    for (int k=ks; k<=ke+1; ++k) {
-      for (int j=js; j<=je; ++j) {
-#pragma simd
-	for (int i=1; i<=(NGHOST); ++i) {
-	  b.x3f(k,j,(is-i)) =  b.x3f(k,j,(is+i-1));
-	}
-      }}
-  }
-}
-
-
 
 void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]){
   // set the vector AxB = A x B
@@ -1243,15 +1176,9 @@ void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]){
 
 
 
-// SS: calculate v(r) for velocity solution for line driven wind
-void DrivenWind(Real (&r),Real (&vel)){
-  vel = sqrt(cs_wind*cs_wind  + alpha/(1.0 - alpha) *2*GM1*(1.0 - gamma_e)*(1.0/r_star - 1.0/r));
-}
 
 
-
-
-// disk functions
+// Disk functions
 
 
 namespace {
@@ -1279,7 +1206,7 @@ Real DenProfileCyl(const Real rad, const Real phi, const Real z) {
   Real p_over_r = p0_over_r0;
   if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
   Real denmid = rho0*std::pow(rad/r0,dslope);
-  Real dentem = denmid*std::exp(gm0/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
+  Real dentem = denmid*std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
   den = dentem;
   return std::max(den,dfloor);
 }
@@ -1299,7 +1226,7 @@ Real PoverR(const Real rad, const Real phi, const Real z) {
 void VelProfileCyl(const Real rad, const Real phi, const Real z,
                    Real &v1, Real &v2, Real &v3) {
   Real p_over_r = PoverR(rad, phi, z);
-  Real vel = (dslope+pslope)*p_over_r/(gm0/rad) + (1.0+pslope)
+  Real vel = (dslope+pslope)*p_over_r/(GM1/rad) + (1.0+pslope)
              - pslope*rad/std::sqrt(rad*rad+z*z);
   vel = std::sqrt(gm0/rad)*std::sqrt(vel);
   if (std::strcmp(COORDINATE_SYSTEM, "cylindrical") == 0) {
