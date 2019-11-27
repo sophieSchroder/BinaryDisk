@@ -46,10 +46,6 @@
 void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
 		  Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 
-void WindInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-		 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
-
-
 void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, const AthenaArray<Real> *flux,
                   const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
 
@@ -70,51 +66,6 @@ Real fspline(Real r, Real eps);
 
 void ParticleAccrete(Mesh *pm, Real(&xi)[3],Real(&vi)[3],Real(&mdot), Real(&pdot)[3]);
 
-void DrivenWind(Real (&r),Real (&vel));
-
-// global (to this file) problem parameters
-Real gamma_gas;
-Real da,pa; // ambient density, pressure
-
-Real GM2, GM1; // point masses
-Real rsoft2; // softening length of PM 2
-Real r_stop; // if steady_wind, radial acc from m1 turns off atfer r_stop
-
-int  include_gas_backreaction, corotating_frame, rotating_background, steady_sink,steady_wind; // flags for output, gas backreaction on EOM, frame choice, rotating background, removal of radial acc inside rsoft2
-
-int n_particle_substeps; // substepping of particle integration
-
-Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
-
-Real Omega[3],  Omega_wind;  // vector rotation of the frame, initial wind
-
-Real trackfile_next_time, trackfile_dt;
-int  trackfile_number;
-
-Real Ggrav;
-
-Real wind_mdot, wind_mach_initial; // variables describing the wind BC
-Real r0, v_wind, rho_wind, cs_wind, iso_sound_speed, p_wind; // wind parameters set from variables describing the wind BC
-Real gamma_e, alpha, r_star; // parameters
-
-
-int is_restart;
-int particle_accrete;
-Real mdot, pdot[3]; // accretion parameters
-
-// disk parameters
-
-namespace {
-void GetCylCoord(Coordinates *pco,Real &rad,Real &phi,Real &z,int i,int j,int k);
-Real DenProfileCyl(const Real rad, const Real phi, const Real z);
-Real PoverR(const Real rad, const Real phi, const Real z);
-void VelProfileCyl(const Real rad, const Real phi, const Real z,
-                   Real &v1, Real &v2, Real &v3);
-// problem parameters which are useful to make global to this file
-Real gm0, r0, rho0, dslope, p0_over_r0, pslope, gamma_gas;
-Real dfloor;   
-} // namespace
-
 // User-defined boundary conditions for disk simulations
 void DiskInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
                  Real time, Real dt,
@@ -134,6 +85,52 @@ void DiskInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
                  Real time, Real dt,
                  int il, int iu, int jl, int ju, int kl, int ku, int ngh);
+
+
+
+
+
+// disk parameters
+
+namespace {
+void GetCylCoord(Coordinates *pco,Real &rad,Real &phi,Real &z,int i,int j,int k);
+Real DenProfileCyl(const Real rad, const Real phi, const Real z);
+Real PoverR(const Real rad, const Real phi, const Real z);
+void VelProfileCyl(const Real rad, const Real phi, const Real z,
+								    Real &v1, Real &v2, Real &v3);
+// problem parameters which are useful to make global to this file
+Real gm0, r0, rho0, dslope, p0_over_r0, pslope, gamma_gas;
+Real dfloor;
+} // namespace
+
+// global (to this file) problem parameters
+Real da,pa; // ambient density, pressure
+
+
+// companion parameters and parameters for corotating frame
+Real GM2, GM1; // point masses
+Real rsoft2; // softening length of PM 2
+Real r_stop; // if steady_wind, radial acc from m1 turns off atfer r_stop
+int  include_gas_backreaction, corotating_frame; // flags for output, gas backreaction on EOM, frame choice
+int n_particle_substeps; // substepping of particle integration
+Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
+Real Omega[3];  // vector rotation of the frame
+
+int particle_accrete;
+Real mdot, pdot[3]; // accretion parameters
+
+
+// for particle output file
+Real trackfile_next_time, trackfile_dt;
+int  trackfile_number;
+Real Ggrav;
+
+
+// restart simulations 
+int is_restart;
+
+
+
 
 
 
