@@ -43,8 +43,8 @@
 
 
 // wind  bousaries
-void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-		  Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
+//void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
+	//	  Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 
 void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, const AthenaArray<Real> *flux,
                   const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
@@ -189,10 +189,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 
 
-  // enroll the BCs
-  if(mesh_bcs[OUTER_X1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(OUTER_X1, DiodeOuterX1);
-  }
+  // // enroll the BCs
+  // if(mesh_bcs[OUTER_X1] == GetBoundaryFlag("user")) {
+  //   EnrollUserBoundaryFunction(OUTER_X1, DiodeOuterX1);
+  // }
 
 
 	// disk bc
