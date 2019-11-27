@@ -42,7 +42,7 @@
 #include "../utils/utils.hpp"
 
 
-
+// wind  bousaries
 void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
 		  Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 
@@ -110,7 +110,6 @@ Real da,pa; // ambient density, pressure
 // companion parameters and parameters for corotating frame
 Real GM2, GM1; // point masses
 Real rsoft2; // softening length of PM 2
-Real r_stop; // if steady_wind, radial acc from m1 turns off atfer r_stop
 int  include_gas_backreaction, corotating_frame; // flags for output, gas backreaction on EOM, frame choice
 int n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
@@ -126,7 +125,7 @@ int  trackfile_number;
 Real Ggrav;
 
 
-// restart simulations 
+// restart simulations
 int is_restart;
 
 
@@ -149,19 +148,22 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   pa   = pin->GetOrAddReal("problem","pamb",1.0);
   da   = pin->GetOrAddReal("problem","damb",1.0);
   gamma_gas = pin->GetReal("hydro","gamma");
-  iso_sound_speed = pin->GetReal("hydro", "iso_sound_speed");
 
+	// Get parameters for initial density and velocity
+  rho0 = pin->GetReal("problem","rho0");
+  dslope = pin->GetOrAddReal("problem","dslope",0.0);
+
+	// Get parameters for gravitatonal potential of central point mass
   Ggrav = pin->GetOrAddReal("problem","Ggrav",6.67408e-8);
-  GM2 = pin->GetOrAddReal("problem","GM2",0.0);
-  GM1 = pin->GetOrAddReal("problem","GM1",1.0);
+  GM1 = pin->GetOrAddReal("problem","GM1",0.0);
+	GM2 = pin->GetOrAddReal("problem","GM2",1.0);
+  r0 = pin->GetOrAddReal("problem","r0",1.0);
+	corotating_frame = pin->GetInteger("problem","corotating_frame");
 
+	// softening of companion gravity
   rsoft2 = pin->GetOrAddReal("problem","rsoft2",0.1);
-  corotating_frame = pin->GetInteger("problem","corotating_frame");
-  rotating_background = pin->GetInteger("problem","rotating_background");
-  steady_sink = pin->GetInteger("problem","steady_sink");
-  steady_wind = pin->GetInteger("problem","steady_wind");
-  r_stop = pin->GetOrAddReal("problem","r_stop",1.0);
 
+	// for tracking particle orbits
   trackfile_dt = pin->GetOrAddReal("problem","trackfile_dt",0.01);
 
   include_gas_backreaction = pin->GetInteger("problem","gas_backreaction");
@@ -171,53 +173,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   // local vars
   Real sma = pin->GetOrAddReal("problem","sma",2.0);
   Real ecc = pin->GetOrAddReal("problem","ecc",0.0);
+	Real Omega_orb, vcirc;
 
-  Real wind_f_corot = pin->GetOrAddReal("problem","wind_f_corotation",1.0);
-  Real Omega_orb, vcirc;
-
-
-  // wind parameters used for driven wind solution
-  wind_mdot = pin->GetOrAddReal("problem","wind_mdot",1.e-10);
-  wind_mach_initial = pin->GetOrAddReal("problem","wind_mach_initial",1.0);
-  gamma_e = pin->GetOrAddReal("problem","gamma_e",0.0);
-  alpha = pin->GetOrAddReal("problem","alpha",0.5);
-  r_star = pin->GetOrAddReal("problem","r_star",0.5);
-  cs_wind = iso_sound_speed;
-
-  // paramters for hse inner boundary - simualtion starts at sonic point
-  r0 = pin->GetOrAddReal("mesh","x1min",0.0);
-  v_wind = iso_sound_speed*wind_mach_initial;
-  rho_wind = wind_mdot /(4.0 * 3.14159 * r0*r0 * v_wind);
-
-
-  if (NON_BAROTROPIC_EOS) {
-    cs_wind = sqrt(gamma_gas)*iso_sound_speed;
-    p_wind = rho_wind * cs_wind*cs_wind / gamma_gas;
-  }
-
-  // set the wind Omega
-  Omega_wind = wind_f_corot * Omega_orb;
-
-  // calculate quatities for printing
-  // velocity at position of companion from analytic solution
-  Real v_comp = sqrt(iso_sound_speed*iso_sound_speed + alpha/(1.0 - alpha) * 2*GM1*(1.0 - gamma_e)/r_star * (1.0 - r_star/sma));
-
-  // velocity at infinity
-  Real v_inf = sqrt(alpha/(1.0 - alpha) * 2*GM1*(1.0 - gamma_e)/r_star);
-
-  // calculate sonic radius to make sure the inner baiundary is larger
-  Real r_sonic = 1.0 / (1.0/r_star -  iso_sound_speed*iso_sound_speed*(1.0 - alpha)/(alpha*2*GM1*(1.0-gamma_e)));
-
-
-
-	// Disk SETUP
-	// Get parameters for gravitatonal potential of central point mass
-  gm0 = pin->GetOrAddReal("problem","GM",0.0);
-  r0 = pin->GetOrAddReal("problem","r0",1.0);
-
-  // Get parameters for initial density and velocity
-  rho0 = pin->GetReal("problem","rho0");
-  dslope = pin->GetOrAddReal("problem","dslope",0.0);
 
   // Get parameters of initial pressure and cooling parameters
   if (NON_BAROTROPIC_EOS) {
@@ -229,7 +186,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   }
   Real float_min = std::numeric_limits<float>::min();
   dfloor=pin->GetOrAddReal("hydro","dfloor",(1024*(float_min)));
-
 
 
 
@@ -345,10 +301,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     std::cout << "corotating frame? = "<< corotating_frame<<"\n";
     std::cout << "gas backreaction? = "<< include_gas_backreaction<<"\n";
     std::cout << "particle substeping n="<<n_particle_substeps<<"\n";
-    std::cout << "isothermal sound speed in equation is the same as wind sound speed? ="<<iso_sound_speed<<", "<<cs_wind<<"\n";
-    std::cout << "the sonic radius for isothermal solution = "<< r_sonic<<"\n";
-    std::cout << "velocity at companion compared to orbit = "<< v_comp/vcirc<<"\n";
-    std::cout << "velocity at infinity compared to orbit = "<< v_inf/vcirc<<"\n";
     if(time==0){
       std::cout << "==========================================================\n";
       std::cout << "==========   Particle        =============================\n";
