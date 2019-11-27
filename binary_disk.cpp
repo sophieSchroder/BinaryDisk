@@ -99,7 +99,7 @@ Real PoverR(const Real rad, const Real phi, const Real z);
 void VelProfileCyl(const Real rad, const Real phi, const Real z,
 								    Real &v1, Real &v2, Real &v3);
 // problem parameters which are useful to make global to this file
-Real gm0, r0, rho0, dslope, p0_over_r0, pslope, gamma_gas;
+Real r0, rho0, dslope, p0_over_r0, pslope, gamma_gas;
 Real dfloor;
 } // namespace
 
@@ -1228,7 +1228,7 @@ void VelProfileCyl(const Real rad, const Real phi, const Real z,
   Real p_over_r = PoverR(rad, phi, z);
   Real vel = (dslope+pslope)*p_over_r/(GM1/rad) + (1.0+pslope)
              - pslope*rad/std::sqrt(rad*rad+z*z);
-  vel = std::sqrt(gm0/rad)*std::sqrt(vel);
+  vel = std::sqrt(GM1/rad)*std::sqrt(vel);
   if (std::strcmp(COORDINATE_SYSTEM, "cylindrical") == 0) {
     v1=0.0;
     v2=vel;
