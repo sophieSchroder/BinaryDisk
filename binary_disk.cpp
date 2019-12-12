@@ -91,8 +91,6 @@ void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
 
 // disk parameters
-
-namespace {
 void GetCylCoord(Coordinates *pco,Real &rad,Real &phi,Real &z,int i,int j,int k);
 Real DenProfileCyl(const Real rad, const Real phi, const Real z);
 Real PoverR(const Real rad, const Real phi, const Real z);
@@ -101,7 +99,7 @@ void VelProfileCyl(const Real rad, const Real phi, const Real z,
 // problem parameters which are useful to make global to this file
 Real r0, rho0, dslope, p0_over_r0, pslope, gamma_gas;
 Real dfloor;
-} // namespace
+
 
 // global (to this file) problem parameters
 Real da,pa; // ambient density, pressure
