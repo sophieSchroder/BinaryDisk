@@ -1,4 +1,4 @@
-xç<comment>
+<comment>
 problem   = spherical blast wave in spherical coordinates
 reference = Gardiner. T.A. & Stone, J.M., JCP, 205, 509 (2005) (for MHD version of test)
 configure = --prob=wind_mt_driven --coord=spherical_polar
