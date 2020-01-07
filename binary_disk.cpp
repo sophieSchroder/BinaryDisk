@@ -46,7 +46,7 @@
 //void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
 	//	  Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 
-void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, const AthenaArray<Real> *flux,
+void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
                   const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
 
 void ParticleAccels(Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]);
@@ -91,15 +91,15 @@ void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
 
 // disk parameters
+namespace{
 void GetCylCoord(Coordinates *pco,Real &rad,Real &phi,Real &z,int i,int j,int k);
 Real DenProfileCyl(const Real rad, const Real phi, const Real z);
 Real PoverR(const Real rad, const Real phi, const Real z);
-void VelProfileCyl(const Real rad, const Real phi, const Real z,
-								    Real &v1, Real &v2, Real &v3);
+void VelProfileCyl(const Real rad, const Real phi, const Real z,Real &v1, Real &v2, Real &v3);
 // problem parameters which are useful to make global to this file
 Real r0, rho0, dslope, p0_over_r0, pslope, gamma_gas;
 Real dfloor;
-
+}
 
 // global (to this file) problem parameters
 Real da,pa; // ambient density, pressure
@@ -360,7 +360,7 @@ int RefinementCondition(MeshBlock *pmb)
 
 
 // Source Function for two point masses
-void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, const AthenaArray<Real> *flux,
+void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, 
 		  const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc, AthenaArray<Real> &cons)
 {
 
@@ -499,7 +499,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, const AthenaAr
 
 	if (NON_BAROTROPIC_EOS) {
 	  // update the energy (source = - rho v dot a
-	  cons(IEN,k,j,i) += src_1/den * 0.5*(flux[X1DIR](IDN,k,j,i) + flux[X1DIR](IDN,k,j,i+1));
+	  cons(IEN,k,j,i) += src_1/den * 0.5*(pmb->phydro->flux[X1DIR](IDN,k,j,i) + pmb->phydro->flux[X1DIR](IDN,k,j,i+1));
 	  cons(IEN,k,j,i) += src_2*prim(IVY,k,j,i) + src_3*prim(IVZ,k,j,i);
 	}
 
@@ -586,20 +586,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 //! \fn void MeshBlock::UserWorkInLoop(void)
 //  \brief Function called once every time step for user-defined work.
 //======================================================================================
-void MeshBlock::UserWorkInLoop(void)
-{
-  return;
-} // end of UserWorkInLoop
 
+void Mesh::UserWorkInLoop(){
 
-//========================================================================================
-// MM
-//! \fn void MeshBlock::MeshUserWorkInLoop(void)
-//  \brief Function called once every time step for user-defined work.
-//========================================================================================
-
-void Mesh::MeshUserWorkInLoop(ParameterInput *pin){
-
+  ParameterInput *pin;
   // first let the particle accrete
   if(particle_accrete>0){
     ParticleAccrete(pblock->pmy_mesh,xi,vi,mdot,pdot);
