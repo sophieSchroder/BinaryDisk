@@ -129,8 +129,6 @@ int is_restart;
 
 
 
-
-
 //======================================================================================
 //! \fn void Mesh::InitUserMeshData(ParameterInput *pin)
 //  \brief Function to initialize problem-specific data in mesh class.  Can also be used
@@ -430,12 +428,13 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
 	Real a_z = - GM2 * fspline(d2,rsoft2) * (z-z_2);
 
-	// add the correction for the orbiting frame (relative to the COM)
-	a_x += -  GM2 / d12c * x_2;
-	a_y += -  GM2 / d12c * y_2;
-	a_z += -  GM2 / d12c * z_2;
+	if(corotating_frame == 1){//Xiaoshan: test
+	  // add the correction for the orbiting frame (relative to the COM)
+	  a_x += -  GM2 / d12c * x_2;
+	  a_y += -  GM2 / d12c * y_2;
+	  a_z += -  GM2 / d12c * z_2;
 
-	if(corotating_frame == 1){
+	//if(corotating_frame == 1){
 	  // distance from the origin in cartesian (vector)
 	  Real rxyz[3];
 	  rxyz[0] = x;
@@ -493,6 +492,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real src_3 = dt*den*a_ph;
 
 	// add the source term to the momenta  (source = - rho * a)
+        
 	cons(IM1,k,j,i) += src_1;
 	cons(IM2,k,j,i) += src_2;
 	cons(IM3,k,j,i) += src_3;
@@ -502,6 +502,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  cons(IEN,k,j,i) += src_1/den * 0.5*(pmb->phydro->flux[X1DIR](IDN,k,j,i) + pmb->phydro->flux[X1DIR](IDN,k,j,i+1));
 	  cons(IEN,k,j,i) += src_2*prim(IVY,k,j,i) + src_3*prim(IVZ,k,j,i);
 	}
+	
 
       }
     }
@@ -729,10 +730,6 @@ void WritePMTrackfile(Mesh *pm, ParameterInput *pin){
 
 
 
-
-
-
-
 void particle_step(Real dt,Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]){
   // Leapfrog algorithm (KDK)
 
@@ -809,7 +806,6 @@ Real fspline(Real r, Real eps){
   }
 
 }
-
 
 
 
