@@ -428,7 +428,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
 	Real a_z = - GM2 * fspline(d2,rsoft2) * (z-z_2);
 
-	if(corotating_frame == 1){//Xiaoshan: don't include corotating frame terms
+	if(corotating_frame == 1){//Xiaoshan: excluding the COM-centerstarframe transformation too
 	  // add the correction for the orbiting frame (relative to the COM)
 	  a_x += -  GM2 / d12c * x_2;
 	  a_y += -  GM2 / d12c * y_2;
