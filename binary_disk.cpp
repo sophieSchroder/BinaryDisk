@@ -87,7 +87,7 @@ void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
                  int il, int iu, int jl, int ju, int kl, int ku, int ngh);
 
 
-
+Real massfluxix1(MeshBlock *pmb, int iout);
 
 
 // disk parameters
@@ -221,6 +221,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   if(adaptive==true)
     EnrollUserRefinementCondition(RefinementCondition);
 
+  //Enroll history dump
+  AllocateUserHistoryOutput(1);
+  EnrollUserHistoryOutput(0,massfluxix1,"massfluxix1");
 
   // always write at startup
   trackfile_next_time = time;
@@ -1354,4 +1357,33 @@ void DiskOuterX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
       }
     }
   }
+}
+
+
+Real massfluxix1(MeshBlock *pmb, int iout){
+  Real massflux = 0.0;
+  int is=pmb->is, ie=pmb->ie, js=pmb->js, je=pmb->je, ks=pmb->ks, ke=pmb->ke;
+  AthenaArray<Real> face1;
+  face1.NewAthenaArray((ie-is)+2*NGHOST+2);
+
+  AthenaArray<Real> x1flux = pmb->phydro->flux[X1DIR];
+
+  if (pmb->pbval->apply_bndry_fn_[BoundaryFace::inner_x1]){
+    for (int k=ks; k<=ke; k++){
+      for (int j=js; j<=je; j++){
+	pmb->pcoord->Face1Area(k , j, is, ie, face1);
+	for (int i=is; i<=is; i++){
+	  massflux += face1(is)*x1flux(0,k,j,is);//x1flux(0) is the density flux, do we want to time volume too?
+        }
+
+      }
+    }
+  }
+
+  face1.DeleteAthenaArray();
+  x1flux.DeleteAthenaArray();
+
+  return massflux;
+
+
 }

@@ -131,6 +131,7 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
   void CheckUserBoundaries();
 
   int AdvanceCounterPhysID(int num_phys);
+  bool apply_bndry_fn_[6]{};//xs: make it public for mass flux 
 
  private:
   MeshBlock *pmy_block_;      // ptr to MeshBlock containing this BoundaryValues
@@ -138,7 +139,7 @@ class BoundaryValues : public BoundaryBase, //public BoundaryPhysics,
 
   // if a BoundaryPhysics or user fn should be applied at each MeshBlock boundary
   // false --> e.g. block, polar, (shear-) periodic boundaries
-  bool apply_bndry_fn_[6]{};   // C++11: in-class initializer of non-static member
+  //bool apply_bndry_fn_[6]{};   // C++11: in-class initializer of non-static member
   // C++11: direct-list-initialization -> value init of array -> zero init of each scalar
 
   // For spherical polar coordinates edge-case: if one MeshBlock wraps entirely around
