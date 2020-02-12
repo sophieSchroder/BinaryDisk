@@ -141,35 +141,36 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   // read in some global params (to this file)
 
   // first non-mode-dependent settings
+  //pressure and density of background medium
   pa   = pin->GetOrAddReal("problem","pamb",1.0);
   da   = pin->GetOrAddReal("problem","damb",1.0);
   gamma_gas = pin->GetReal("hydro","gamma");
 
-	// Get parameters for initial density and velocity
+  // Get parameters for initial density profile
   rho0 = pin->GetReal("problem","rho0");
   dslope = pin->GetOrAddReal("problem","dslope",0.0);
 
-	// Get parameters for gravitatonal potential of central point mass and companion
+  // Get parameters for gravitatonal potential of central point mass and companion
   Ggrav = pin->GetOrAddReal("problem","Ggrav",6.67408e-8);
   GM1 = pin->GetOrAddReal("problem","GM1",0.0);
-	GM2 = pin->GetOrAddReal("problem","GM2",1.0);
+  GM2 = pin->GetOrAddReal("problem","GM2",1.0);
   r0 = pin->GetOrAddReal("problem","r0",1.0);
-	corotating_frame = pin->GetInteger("problem","corotating_frame");
+  corotating_frame = pin->GetInteger("problem","corotating_frame");
 
-	// softening of companion gravity
+  // softening of companion gravity
   rsoft2 = pin->GetOrAddReal("problem","rsoft2",0.1);
 
-	// for tracking particle orbits
+  // for tracking particle orbits
   trackfile_dt = pin->GetOrAddReal("problem","trackfile_dt",0.01);
 
-  include_gas_backreaction = pin->GetInteger("problem","gas_backreaction");
-  n_particle_substeps = pin->GetInteger("problem","n_particle_substeps");
-  particle_accrete = pin->GetInteger("problem","particle_accrete");
+  include_gas_backreaction = pin->GetInteger("problem","gas_backreaction");//does the gas changes orbit of companion
+  n_particle_substeps = pin->GetInteger("problem","n_particle_substeps");//for the Leap-frog scheme
+  particle_accrete = pin->GetInteger("problem","particle_accrete");//companion accretion
 
   // local vars
-  Real sma = pin->GetOrAddReal("problem","sma",2.0);
+  Real sma = pin->GetOrAddReal("problem","sma",2.0);//semi-major axis
   Real ecc = pin->GetOrAddReal("problem","ecc",0.0);
-	Real Omega_orb, vcirc;
+  Real Omega_orb, vcirc;
 
 
   // Get parameters of initial pressure and cooling parameters
