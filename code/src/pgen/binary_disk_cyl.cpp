@@ -87,6 +87,12 @@ void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
                  int il, int iu, int jl, int ju, int kl, int ku, int ngh);
 
 
+void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+			int is, int ie, int js, int je, int ks, int ke, int ngh);
+
+void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+		      int is, int ie, int js, int je, int ks, int ke, int ngh);
+
 Real massfluxix1(MeshBlock *pmb, int iout);
 
 
@@ -112,6 +118,8 @@ int  include_gas_backreaction, corotating_frame; // flags for output, gas backre
 int n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
 Real Omega[3];  // vector rotation of the frame
+Real ecc, sma;
+
 
 int particle_accrete;
 Real mdot, pdot[3]; // accretion parameters
@@ -168,8 +176,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   particle_accrete = pin->GetInteger("problem","particle_accrete");//companion accretion
 
   // local vars
-  Real sma = pin->GetOrAddReal("problem","sma",2.0);//semi-major axis
-  Real ecc = pin->GetOrAddReal("problem","ecc",0.0);
+  sma = pin->GetOrAddReal("problem","sma",2.0);//semi-major axis
+  ecc = pin->GetOrAddReal("problem","ecc",0.0);
   Real Omega_orb, vcirc;
 
 
@@ -192,14 +200,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   // }
 
 
-	// disk bc
-	// enroll user-defined boundary condition
+  //trying steaming bc
   if (mesh_bcs[BoundaryFace::inner_x1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, DiskInnerX1);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, OutflowInnerX1);
   }
   if (mesh_bcs[BoundaryFace::outer_x1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, DiskOuterX1);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, StreamingOuterX1);
   }
+  /*
   if (mesh_bcs[BoundaryFace::inner_x2] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(BoundaryFace::inner_x2, DiskInnerX2);
   }
@@ -212,6 +220,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   if (mesh_bcs[BoundaryFace::outer_x3] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(BoundaryFace::outer_x3, DiskOuterX3);
   }
+  */
 
 
   // Enroll a Source Function
@@ -566,7 +575,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 	  ku += (NGHOST);
   }
 
-
+  Real rho_floor = 1.0e-5;
+  Real press_init = 1.0e-4;
 
   //  Initialize density and momenta
   for (int k=ks; k<=ke; ++k) {
@@ -574,15 +584,15 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) {
         GetCylCoord(pcoord,rad,phi,z,i,j,k); // convert to cylindrical coordinates
         // compute initial conditions in cylindrical coordinates
-        phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
-        VelProfileCyl(rad,phi,z,v1,v2,v3);
+        phydro->u(IDN,k,j,i) = rho_floor; //DenProfileCyl(rad,phi,z);
+        //VelProfileCyl(rad,phi,z,v1,v2,v3);
 
-        phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
-        phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
-        phydro->u(IM3,k,j,i) = phydro->u(IDN,k,j,i)*v3;
+        phydro->u(IM1,k,j,i) = 0.0;//phydro->u(IDN,k,j,i)*v1;
+        phydro->u(IM2,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v2;
+        phydro->u(IM3,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v3;
         if (NON_BAROTROPIC_EOS) {
           Real p_over_r = PoverR(rad,phi,z);
-          phydro->u(IEN,k,j,i) = p_over_r*phydro->u(IDN,k,j,i)/(gamma_gas - 1.0);
+          phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
                                        + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
         }
@@ -1396,3 +1406,74 @@ Real massfluxix1(MeshBlock *pmb, int iout){
 
 
 }
+
+
+void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+		      int is, int ie, int js, int je, int ks, int ke, int ngh){
+  int L1flag = 0;
+  Real local_dens = 1.0;
+  Real local_vr = -0.01;
+  Real local_press = 0.01;
+  Real local_cs = 0.1;				
+  Real rad(0.0), phi(0.0), z(0.0);
+  Real v1(0.0), v2(0.0), v3(0.0);
+
+  Real vcirc = sqrt((GM1+GM2)/sma);
+  Real Omega_orb = vcirc/sma;
+
+  for (int k=ks; k<=ke; ++k) {//z
+    for (int j=js; j<=je; ++j) {//phi
+      Real phi_coord = pco->x2v(j);
+      for (int i=1; i<=(NGHOST); ++i) {//R
+
+	rad = pco->x1v(i);
+	phi = pco->x2v(j);
+	z = pco->x3v(k);
+
+	if (fabs(phi_coord)<=0.1){// if within L1 point
+
+	  prim(IDN,k,j,ie+i) = local_dens;
+	  prim(IVX,k,j,ie+i) = local_vr;
+	  prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);//Omega_orb*0.62;
+	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
+	  
+	  if (NON_BAROTROPIC_EOS) {
+	    prim(IEN,k,j,ie+i) = local_press;
+	  }
+	  
+	}else{//one-direction outflow
+	  prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
+	  prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
+	  prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);//Omega_orb*0.62;
+	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
+	  prim(IEN,k,j,ie+i) = prim(IEN,k,j,ie);
+	}
+	
+
+
+      }//end R
+    }//end theta
+  }//end Phi
+
+
+}
+
+
+void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+		    int is, int ie, int js, int je, int ks, int ke, int ngh){
+  for (int k=ks; k<=ke; ++k) {//Phi
+    for (int j=js; j<=je; ++j) {//theta
+      for (int i=1; i<=(NGHOST); ++i) {//R
+	prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
+	prim(IVX,k,j,is-i) = std::max(0.0, prim(IVX,k,j,is));
+	prim(IVY,k,j,is-i) = prim(IVX,k,j,is);
+	prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
+	prim(IEN,k,j,is-i) = prim(IEN,k,j,is);
+
+      }//end R
+    }//end theta
+  }//end Phi
+
+
+}
+
