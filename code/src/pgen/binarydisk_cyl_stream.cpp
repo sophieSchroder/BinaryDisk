@@ -202,12 +202,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
   //trying steaming bc
   if (mesh_bcs[BoundaryFace::inner_x1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, DiskInnerX1);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, OutflowInnerX1);
   }
   if (mesh_bcs[BoundaryFace::outer_x1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, DiskOuterX1);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, StreamingOuterX1);
   }
-
+  /*
   if (mesh_bcs[BoundaryFace::inner_x2] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(BoundaryFace::inner_x2, DiskInnerX2);
   }
@@ -220,7 +220,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   if (mesh_bcs[BoundaryFace::outer_x3] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(BoundaryFace::outer_x3, DiskOuterX3);
   }
-
+  */
 
 
   // Enroll a Source Function
@@ -584,21 +584,22 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) {
         GetCylCoord(pcoord,rad,phi,z,i,j,k); // convert to cylindrical coordinates
         // compute initial conditions in cylindrical coordinates
-        phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
-        VelProfileCyl(rad,phi,z,v1,v2,v3);
+        phydro->u(IDN,k,j,i) = rho_floor; //DenProfileCyl(rad,phi,z);
+        //VelProfileCyl(rad,phi,z,v1,v2,v3);
 
-        phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
-        phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
-        phydro->u(IM3,k,j,i) = phydro->u(IDN,k,j,i)*v3;
+        phydro->u(IM1,k,j,i) = 0.0;//phydro->u(IDN,k,j,i)*v1;
+        phydro->u(IM2,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v2;
+        phydro->u(IM3,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v3;
         if (NON_BAROTROPIC_EOS) {
           Real p_over_r = PoverR(rad,phi,z);
-          phydro->u(IEN,k,j,i) = p_over_r*phydro->u(IDN,k,j,i)/(gamma_gas - 1.0);
+          phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
                                        + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
         }
       }
     }
   }
+
   return;
 }
 
