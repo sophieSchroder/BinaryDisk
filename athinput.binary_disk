@@ -19,7 +19,7 @@ dt         = 0.5      # time increment between outputs
 <time>
 cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = -1        # cycle limit
-tlim       = 40.0       # time limit
+tlim       = 80.0       # time limit
 
 <mesh>
 nx1        = 288                      # Number of zones in X1-direction
@@ -63,8 +63,8 @@ Ggrav           = 1.0   # Gravity
 GM1             = 0.5	# mass of center
 GM2             = 0.5	# mass of companion
 rsoft2          = 0.1	# softening length of mass 2
-sma             = 1.0   # separartion
-ecc             = 0.0 
+sma             = 2.0   # separartion
+ecc             = 0.2 
 
 pamb          = 1.0e-17           # ambient pressure, not implemented
 damb          = 1.0e-17
