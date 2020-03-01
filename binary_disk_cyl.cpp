@@ -326,14 +326,15 @@ int RefinementCondition(MeshBlock *pmb)
   Real mindist=1.e10;
   for(int k=pmb->ks; k<=pmb->ke; k++){
 
-    Real ph= pmb->pcoord->x2v(k);
-    Real sin_ph = sin(ph);
-    Real cos_ph = cos(ph);
+    Real z= pmb->pcoord->x3v(j);
 
     for(int j=pmb->js; j<=pmb->je; j++) {
 
-      Real z= pmb->pcoord->x2v(j);
-      
+      Real ph= pmb->pcoord->x2v(k);
+      Real sin_ph = sin(ph);
+      Real cos_ph = cos(ph);
+
+
       for(int i=pmb->is; i<=pmb->ie; i++) {
 
 	Real r = pmb->pcoord->x1v(i);
