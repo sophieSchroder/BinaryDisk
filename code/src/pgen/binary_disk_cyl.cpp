@@ -325,18 +325,22 @@ int RefinementCondition(MeshBlock *pmb)
 {
   Real mindist=1.e10;
   for(int k=pmb->ks; k<=pmb->ke; k++){
+
+    Real ph= pmb->pcoord->x2v(k);
+    Real sin_ph = sin(ph);
+    Real cos_ph = cos(ph);
+
     for(int j=pmb->js; j<=pmb->je; j++) {
+
+      Real z_cyl= pmb->pcoord->x3v(j);
+
       for(int i=pmb->is; i<=pmb->ie; i++) {
 
-	Real ph= pmb->pcoord->x2v(k);
-	Real sin_ph = sin(ph);
-	Real cos_ph = cos(ph);
-	Real z= pmb->pcoord->x3v(j);
-	Real r = pmb->pcoord->x1v(i)
+	Real r = pmb->pcoord->x1v(i);
 
 	Real x = r*cos_ph;
 	Real y = r*sin_ph;
-	Real z_cart = z; // z in cartesian
+	Real z_cart = z_cyl; // z in cartesian
 
 	Real dist = std::sqrt(SQR(x-xi[0]) +
 			      SQR(y-xi[1]) +
@@ -395,7 +399,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//get some angles
 	Real sin_ph = sin(ph);
 	Real cos_ph = cos(ph);
-	Real z_r_ang = atan2(z/r); //XH atan2 inclues the sign
+	Real z_r_ang = atan2(z_cyl,r); //XH atan2 inclues the sign
 	Real cos_zr = cos(z_r_ang);
 	Real sin_zr = sin(z_r_ang);
 
@@ -409,7 +413,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	// cylindrical coordinates, get local cartesian
 	Real x = r*cos_ph;
 	Real y = r*sin_ph;
-	Real z_cart = z;
+	Real z_cart = z_cyl;
 
 
 	Real d2  = sqrt(pow(x-x_2, 2) +
@@ -427,7 +431,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//    so in spherical polar, it's like GM1*<1/r>/r. But in cylindrical, I guess we need to use either
 	// Real a_r1 = -GM1/(r*r+z*z); //for not using cell-volume averaged quantities <1/r>, just use r*r+z*z
 	//or 
-	Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z*z); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
+	Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
 	//Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/std::sqrt(r*r+z*z); //this is like -GM1*<1/r>/sqrt(z^2+r^2); // 
         
 
@@ -435,20 +439,19 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	// PM2 gravitational accels in cartesian coordinates
 	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
 	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
-	Real a_z = - GM2 * fspline(d2,rsoft2) * (z-z_2);
+	Real a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2);
 
-	//if(corotating_frame == 1){//Xiaoshan: excluding the COM-centerstarframe transformation too
-	  // add the correction for the orbiting frame (relative to the COM)
-	  a_x += -  GM2 / d12c * x_2;
-	  a_y += -  GM2 / d12c * y_2;
-	  a_z += -  GM2 / d12c * z_2;
+	// add the correction for the orbiting frame (relative to the COM)
+	a_x += -  GM2 / d12c * x_2;
+	a_y += -  GM2 / d12c * y_2;
+	a_z_cart += -  GM2 / d12c * z_2;
 
 	if(corotating_frame == 1){
 	  // distance from the origin in cartesian (vector)
 	  Real rxyz[3];
 	  rxyz[0] = x;
 	  rxyz[1] = y;
-	  rxyz[2] = z;
+	  rxyz[2] = z_cart;
 
 	  // get the cartesian velocities from the cylindrical (vector)
 	  Real vgas[3];
@@ -465,7 +468,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 
 	  a_x += - Omega_x_Omega_x_r[0];
 	  a_y += - Omega_x_Omega_x_r[1];
-	  a_z += - Omega_x_Omega_x_r[2];
+	  a_z_cart += - Omega_x_Omega_x_r[2];
 
 	  // coriolis
 	  Real Omega_x_v[3];
@@ -473,24 +476,24 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 
 	  a_x += -2.0*Omega_x_v[0];
 	  a_y += -2.0*Omega_x_v[1];
-	  a_z += -2.0*Omega_x_v[2];
+	  a_z_cart += -2.0*Omega_x_v[2];
 	}
 
 	// add the gas acceleration of the frame of ref
 	if(include_gas_backreaction == 1){
 	  a_x += -agas1i[0];
 	  a_y += -agas1i[1];
-	  a_z += -agas1i[2];
+	  a_z_cart += -agas1i[2];
 	}
 
 	// convert back to cylindrical , double-check here, cos_ph, sin_ph, cos_zr, sin_zr
 	Real a_r  = cos_ph*a_x + sin_ph*a_y;
 	Real a_ph = -sin_ph*a_x + cos_ph*a_y;
-	Real a_z  = a_z;
+	Real a_z_cyl  = a_z_cart;
 
 	// add the PM1 accel
 	a_r += a_r1*cos_zr;
-	a_z += a_r1*sin_zr;
+	a_z_cyl += a_r1*sin_zr;
 
 	//
 	// ADD SOURCE TERMS TO THE GAS MOMENTA/ENERGY
@@ -498,8 +501,8 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real den = prim(IDN,k,j,i);
 
 	Real src_1 = dt*den*a_r;
-	Real src_2 = dt*den*a_th;
-	Real src_3 = dt*den*a_ph;
+	Real src_2 = dt*den*a_ph;
+	Real src_3 = dt*den*a_z_cyl;
 
 	// add the source term to the momenta  (source = - rho * a)
 
