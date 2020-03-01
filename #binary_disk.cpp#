@@ -326,21 +326,22 @@ int RefinementCondition(MeshBlock *pmb)
   Real mindist=1.e10;
   for(int k=pmb->ks; k<=pmb->ke; k++){
 
-    Real z= pmb->pcoord->x3v(j);
+    Real ph= pmb->pcoord->x3v(k);
+    Real sin_ph = sin(ph);
+    Real cos_ph = cos(ph);
 
     for(int j=pmb->js; j<=pmb->je; j++) {
 
-      Real ph= pmb->pcoord->x2v(k);
-      Real sin_ph = sin(ph);
-      Real cos_ph = cos(ph);
-
+      Real th= pmb->pcoord->x2v(j);
+      Real sin_th = sin(th);
+      Real cos_th = cos(th);
 
       for(int i=pmb->is; i<=pmb->ie; i++) {
 
 	Real r = pmb->pcoord->x1v(i);
-	Real x = r*cos_ph;
-	Real y = r*sin_ph;
-	Real z = z;
+	Real x = r*sin_th*cos_ph;
+	Real y = r*sin_th*sin_ph;
+	Real z = r*cos_th;
 
 	Real dist = std::sqrt(SQR(x-xi[0]) +
 			      SQR(y-xi[1]) +
@@ -361,7 +362,7 @@ int RefinementCondition(MeshBlock *pmb)
 
 
 // Source Function for two point masses
-void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
+void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt, 
 		  const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc, AthenaArray<Real> &cons)
 {
 
@@ -389,20 +390,18 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
       for (int i=pmb->is; i<=pmb->ie; i++) {
 
 	Real r = pmb->pcoord->x1v(i);
-	Real ph= pmb->pcoord->x2v(j);
-	Real z = pmb->pcoord->x3v(k);
+	Real th= pmb->pcoord->x2v(j);
+	Real ph= pmb->pcoord->x3v(k);
 
 	Real vr  = prim(IVX,k,j,i);
-	Real vph = prim(IVY,k,j,i);
-	Real vz  = prim(IVZ,k,j,i);
+	Real vth = prim(IVY,k,j,i);
+	Real vph = prim(IVZ,k,j,i);
 
 	//get some angles
+	Real sin_th = sin(th);
+	Real cos_th = cos(th);
 	Real sin_ph = sin(ph);
 	Real cos_ph = cos(ph);
-	Real z_r_ang = atan2(z/r); //XH atan2 inclues the sign
-	Real cos_zr = cos(z_r_ang);
-	Real sin_zr = sin(z_r_ang);
-
 
 	// current position of the secondary
 	Real x_2 = xi[0];
@@ -410,11 +409,10 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real z_2 = xi[2];
 	Real d12c = pow(xi[0]*xi[0] + xi[1]*xi[1] + xi[2]*xi[2], 1.5);
 
-	// cylindrical coordinates, get local cartesian
-	Real x = r*cos_ph;
-	Real y = r*sin_ph;
-	Real z = z;
-
+	// spherical polar coordinates, get local cartesian
+	Real x = r*sin_th*cos_ph;
+	Real y = r*sin_th*sin_ph;
+	Real z = r*cos_th;
 
 	Real d2  = sqrt(pow(x-x_2, 2) +
 			pow(y-y_2, 2) +
@@ -424,17 +422,9 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//  COMPUTE ACCELERATIONS
 	//
 	// PM1
-	//Real a_r1 = -GM1/pow(r,2), r^2=r_y^2 + z^2 ;
+	//Real a_r1 = -GM1/pow(r,2);
 	// cell volume avg'd version, see pointmass.cpp sourceterm code.
-  // SS: is this coord_src1_i_(i) the right one??
-	//XH: I think it's fine to use it here, just think coord_src1_i_(i) as a cell-volume averaged 1/r, say we note it as <1/r>
-	//    so in spherical polar, it's like GM1*<1/r>/r. But in cylindrical, I guess we need to use either
-	// Real a_r1 = -GM1/(r*r+z*z); //for not using cell-volume averaged quantities <1/r>, just use r*r+z*z
-	//or 
-	//Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z*z); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
-	//Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/std::sqrt(r*r+z*z); //this is like -GM1*<1/r>/sqrt(z^2+r^2); // 
-	//for now let's just try 2d
-	Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/(pow(1./pmb->pcoord->coord_src1_i_(i),2)); //-GM1/(1/<1/r>)^2
+	Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
 
 
 	// PM2 gravitational accels in cartesian coordinates
@@ -455,11 +445,11 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  rxyz[1] = y;
 	  rxyz[2] = z;
 
-	  // get the cartesian velocities from the cylindrical (vector)
+	  // get the cartesian velocities from the spherical (vector)
 	  Real vgas[3];
-	  vgas[0] = cos_ph*vr - sin_ph*vph;
-	  vgas[1] = sin_ph*vr + cos_ph*vph;
-	  vgas[2] = vz;
+	  vgas[0] = sin_th*cos_ph*vr + cos_th*cos_ph*vth - sin_ph*vph;
+	  vgas[1] = sin_th*sin_ph*vr + cos_th*sin_ph*vth + cos_ph*vph;
+	  vgas[2] = cos_th*vr - sin_th*vth;
 
 	  // add the centrifugal and coriolis terms
 
@@ -488,14 +478,13 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  a_z += -agas1i[2];
 	}
 
-	// convert back to cylindrical , double-check here, cos_ph, sin_ph, cos_zr, sin_zr
-	Real a_r  = cos_ph*a_x + sin_ph*a_y;
+	// convert back to spherical
+	Real a_r  = sin_th*cos_ph*a_x + sin_th*sin_ph*a_y + cos_th*a_z;
+	Real a_th = cos_th*cos_ph*a_x + cos_th*sin_ph*a_y - sin_th*a_z;
 	Real a_ph = -sin_ph*a_x + cos_ph*a_y;
-	Real a_z  = a_z;
 
 	// add the PM1 accel
-	a_r += a_r1*cos_zr;
-	a_z += a_r1*sin_zr;
+	a_r += a_r1;
 
 	//
 	// ADD SOURCE TERMS TO THE GAS MOMENTA/ENERGY
@@ -507,7 +496,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real src_3 = dt*den*a_ph;
 
 	// add the source term to the momenta  (source = - rho * a)
-
+        
 	cons(IM1,k,j,i) += src_1;
 	cons(IM2,k,j,i) += src_2;
 	cons(IM3,k,j,i) += src_3;
@@ -517,7 +506,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  cons(IEN,k,j,i) += src_1/den * 0.5*(pmb->phydro->flux[X1DIR](IDN,k,j,i) + pmb->phydro->flux[X1DIR](IDN,k,j,i+1));
 	  cons(IEN,k,j,i) += src_2*prim(IVY,k,j,i) + src_3*prim(IVZ,k,j,i);
 	}
-
+	
 
       }
     }
@@ -563,7 +552,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   }
   int kl = ks;
   int ku = ke;
-  if (block_size.nx3 > 1) {
+  if (block_size.nx3 > 1) { 
 	  kl -= (NGHOST);
 	  ku += (NGHOST);
   }
@@ -576,7 +565,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) {
         GetCylCoord(pcoord,rad,phi,z,i,j,k); // convert to cylindrical coordinates
         // compute initial conditions in cylindrical coordinates
-        phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
+	if (rad<=0.62){
+	  phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
+	}else{
+	
+	}
         VelProfileCyl(rad,phi,z,v1,v2,v3);
 
         phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;

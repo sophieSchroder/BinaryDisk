@@ -552,7 +552,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   }
   int kl = ks;
   int ku = ke;
-  if (block_size.nx3 > 1) {
+  if (block_size.nx3 > 1) { 
 	  kl -= (NGHOST);
 	  ku += (NGHOST);
   }
@@ -565,7 +565,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) {
         GetCylCoord(pcoord,rad,phi,z,i,j,k); // convert to cylindrical coordinates
         // compute initial conditions in cylindrical coordinates
-        phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
+	if (rad<=0.62){
+	  phydro->u(IDN,k,j,i) = 1.0e-2;//DenProfileCyl(rad,phi,z);
+	}else{
+	  phydro->u(IDN,k,j,i) = 1.0e-5;
+	}
         VelProfileCyl(rad,phi,z,v1,v2,v3);
 
         phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
