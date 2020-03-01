@@ -400,9 +400,9 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//get some angles
 	Real sin_ph = sin(ph);
 	Real cos_ph = cos(ph);
-  Real z_r_ang = atan(z/r);
-  Real cos_zr = cos(z_r_ang);
-  Real sin_zr = sin(z_r_ang);
+	Real z_r_ang = atan(z/r);
+	Real cos_zr = cos(z_r_ang);
+	Real sin_zr = sin(z_r_ang);
 
 
 	// current position of the secondary
