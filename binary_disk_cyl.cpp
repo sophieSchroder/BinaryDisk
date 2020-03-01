@@ -326,22 +326,20 @@ int RefinementCondition(MeshBlock *pmb)
   Real mindist=1.e10;
   for(int k=pmb->ks; k<=pmb->ke; k++){
 
-    Real ph= pmb->pcoord->x3v(k);
+    Real ph= pmb->pcoord->x2v(k);
     Real sin_ph = sin(ph);
     Real cos_ph = cos(ph);
 
     for(int j=pmb->js; j<=pmb->je; j++) {
 
-      Real th= pmb->pcoord->x2v(j);
-      Real sin_th = sin(th);
-      Real cos_th = cos(th);
-
+      Real z= pmb->pcoord->x2v(j);
+      
       for(int i=pmb->is; i<=pmb->ie; i++) {
 
 	Real r = pmb->pcoord->x1v(i);
-	Real x = r*sin_th*cos_ph;
-	Real y = r*sin_th*sin_ph;
-	Real z = r*cos_th;
+	Real x = r*cos_ph;
+	Real y = r*sin_ph;
+	Real z = z;
 
 	Real dist = std::sqrt(SQR(x-xi[0]) +
 			      SQR(y-xi[1]) +
@@ -485,11 +483,11 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	// convert back to spherical
 	Real a_r  = cos_ph*a_x + sin_ph*a_y;
 	Real a_ph = -sin_ph*a_x + cos_ph*a_y;
-  Real a_z  = a_z;
+	Real a_z  = a_z;
 
 	// add the PM1 accel
 	a_r += a_r1*cos_zr;
-  a_z += a_r1*sin_zr;
+	a_z += a_r1*sin_zr;
 
 	//
 	// ADD SOURCE TERMS TO THE GAS MOMENTA/ENERGY
