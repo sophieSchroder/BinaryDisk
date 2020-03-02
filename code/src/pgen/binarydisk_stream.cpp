@@ -86,15 +86,16 @@ void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
                  Real time, Real dt,
                  int il, int iu, int jl, int ju, int kl, int ku, int ngh);
 
-
 void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 			int is, int ie, int js, int je, int ks, int ke, int ngh);
 
 void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh);
 
+
 Real massfluxix1(MeshBlock *pmb, int iout);
 
+void KeplerianVel(const Real rad, const Real theta, const Real phi, Real &v1, Real &v2, Real &v3);
 
 // disk parameters
 namespace{
@@ -119,7 +120,6 @@ int n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
 Real Omega[3];  // vector rotation of the frame
 Real ecc, sma;
-
 
 int particle_accrete;
 Real mdot, pdot[3]; // accretion parameters
@@ -202,12 +202,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
   //trying steaming bc
   if (mesh_bcs[BoundaryFace::inner_x1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, DiskInnerX1);
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x1, OutflowInnerX1);
   }
   if (mesh_bcs[BoundaryFace::outer_x1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, DiskOuterX1);
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, StreamingOuterX1);
   }
-
+  /*
   if (mesh_bcs[BoundaryFace::inner_x2] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(BoundaryFace::inner_x2, DiskInnerX2);
   }
@@ -220,8 +220,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   if (mesh_bcs[BoundaryFace::outer_x3] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(BoundaryFace::outer_x3, DiskOuterX3);
   }
-
-
+  */
 
   // Enroll a Source Function
   EnrollUserExplicitSourceFunction(TwoPointMass);
@@ -362,8 +361,6 @@ int RefinementCondition(MeshBlock *pmb)
   if(mindist >  3.0*rsoft2) return -1;
   if(mindist <= 3.0*rsoft2) return 1;
 }
-
-
 
 
 
@@ -533,7 +530,6 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 
 }
 
-
 //========================================================================================
 //! \fn void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 //  \brief Function to initialize problem-specific data in MeshBlock class.  Can also be
@@ -554,7 +550,29 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real rad(0.0), phi(0.0), z(0.0);
   Real v1(0.0), v2(0.0), v3(0.0);
-  int ID = Globals::my_rank;
+
+	// local vars for background - not implemented
+  //Real den, pres;
+
+
+	// Prepare index bounds including ghost cells
+  int il = is - NGHOST;
+  int iu = ie + NGHOST;
+  int jl = js;
+  int ju = je;
+  if (block_size.nx2 > 1) {
+	  jl -= (NGHOST);
+	  ju += (NGHOST);
+  }
+  int kl = ks;
+  int ku = ke;
+  if (block_size.nx3 > 1) {
+	  kl -= (NGHOST);
+	  ku += (NGHOST);
+  }
+
+  Real rho_floor = 1.0e-5;
+  Real press_init = 1.0e-4;
 
   //  Initialize density and momenta
   for (int k=ks; k<=ke; ++k) {
@@ -562,27 +580,15 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) {
         GetCylCoord(pcoord,rad,phi,z,i,j,k); // convert to cylindrical coordinates
         // compute initial conditions in cylindrical coordinates
-        phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
-        VelProfileCyl(rad,phi,z,v1,v2,v3);
+        phydro->u(IDN,k,j,i) = rho_floor; //DenProfileCyl(rad,phi,z);
+        //VelProfileCyl(rad,phi,z,v1,v2,v3);
 
-	if (ID==0 && j==64 && i==32){
-
-	  printf("rad, phi, z, k: %g %g %g %d\n", rad, phi, z, k);
-	  
-	  Real p_over_r = p0_over_r0;
-	  if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
-	  printf("poverr %g\n", p_over_r);
-	  printf("expterm, %g %g %g %g\n", GM1/p_over_r, (1./std::sqrt(SQR(rad)+SQR(z))-1./rad),std::sqrt(SQR(rad)+SQR(z)),rad );
-	  printf("dens: %g\n", DenProfileCyl(rad,phi,z));
-	}
-
-
-        phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
-        phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
-        phydro->u(IM3,k,j,i) = phydro->u(IDN,k,j,i)*v3;
+        phydro->u(IM1,k,j,i) = 0.0;//phydro->u(IDN,k,j,i)*v1;
+        phydro->u(IM2,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v2;
+        phydro->u(IM3,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v3;
         if (NON_BAROTROPIC_EOS) {
           Real p_over_r = PoverR(rad,phi,z);
-          phydro->u(IEN,k,j,i) = p_over_r*phydro->u(IDN,k,j,i)/(gamma_gas - 1.0);
+          phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
                                        + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
         }
@@ -1202,7 +1208,6 @@ Real DenProfileCyl(const Real rad, const Real phi, const Real z) {
   if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
   Real denmid = rho0*std::pow(rad/r0,dslope);
   Real dentem = denmid*std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
-  //printf("%g %g %g\n",denmid, std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad)), GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
   den = dentem;
   return std::max(den,dfloor);
 }
@@ -1248,6 +1253,7 @@ void DiskInnerX1(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
   Real rad(0.0), phi(0.0), z(0.0);
   Real v1(0.0), v2(0.0), v3(0.0);
   for (int k=kl; k<=ku; ++k) {
+    //printf("phi coord: %24.16e\n", pco->x3v(k));
     for (int j=jl; j<=ju; ++j) {
       for (int i=1; i<=ngh; ++i) {
         GetCylCoord(pco,rad,phi,z,il-i,j,k);
@@ -1284,118 +1290,6 @@ void DiskOuterX1(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
   }
 }
 
-void DiskInnerX2(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh) {
-  Real rad(0.0), phi(0.0), z(0.0);
-  Real v1(0.0), v2(0.0), v3(0.0);
-  for (int k=kl; k<=ku; ++k) {
-    for (int j=1; j<=ngh; ++j) {
-      for (int i=il; i<=iu; ++i) {
-        GetCylCoord(pco,rad,phi,z,i,jl-j,k);
-        prim(IDN,k,jl-j,i) = DenProfileCyl(rad,phi,z);
-        VelProfileCyl(rad,phi,z,v1,v2,v3);
-        prim(IM1,k,jl-j,i) = v1;
-        prim(IM2,k,jl-j,i) = v2;
-        prim(IM3,k,jl-j,i) = v3;
-        if (NON_BAROTROPIC_EOS)
-          prim(IEN,k,jl-j,i) = PoverR(rad, phi, z)*prim(IDN,k,jl-j,i);
-      }
-    }
-  }
-}
-
-void DiskOuterX2(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh) {
-  Real rad(0.0), phi(0.0), z(0.0);
-  Real v1(0.0), v2(0.0), v3(0.0);
-  for (int k=kl; k<=ku; ++k) {
-    for (int j=1; j<=ngh; ++j) {
-      for (int i=il; i<=iu; ++i) {
-        GetCylCoord(pco,rad,phi,z,i,ju+j,k);
-        prim(IDN,k,ju+j,i) = DenProfileCyl(rad,phi,z);
-        VelProfileCyl(rad,phi,z,v1,v2,v3);
-        prim(IM1,k,ju+j,i) = v1;
-        prim(IM2,k,ju+j,i) = v2;
-        prim(IM3,k,ju+j,i) = v3;
-        if (NON_BAROTROPIC_EOS)
-          prim(IEN,k,ju+j,i) = PoverR(rad, phi, z)*prim(IDN,k,ju+j,i);
-      }
-    }
-  }
-}
-
-void DiskInnerX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh) {
-  Real rad(0.0), phi(0.0), z(0.0);
-  Real v1(0.0), v2(0.0), v3(0.0);
-  for (int k=1; k<=ngh; ++k) {
-    for (int j=jl; j<=ju; ++j) {
-      for (int i=il; i<=iu; ++i) {
-        GetCylCoord(pco,rad,phi,z,i,j,kl-k);
-        prim(IDN,kl-k,j,i) = DenProfileCyl(rad,phi,z);
-        VelProfileCyl(rad,phi,z,v1,v2,v3);
-        prim(IM1,kl-k,j,i) = v1;
-        prim(IM2,kl-k,j,i) = v2;
-        prim(IM3,kl-k,j,i) = v3;
-        if (NON_BAROTROPIC_EOS)
-          prim(IEN,kl-k,j,i) = PoverR(rad, phi, z)*prim(IDN,kl-k,j,i);
-      }
-    }
-  }
-}
-
-void DiskOuterX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh) {
-  Real rad(0.0), phi(0.0), z(0.0);
-  Real v1(0.0), v2(0.0), v3(0.0);
-  for (int k=1; k<=ngh; ++k) {
-    for (int j=jl; j<=ju; ++j) {
-      for (int i=il; i<=iu; ++i) {
-        GetCylCoord(pco,rad,phi,z,i,j,ku+k);
-        prim(IDN,ku+k,j,i) = DenProfileCyl(rad,phi,z);
-        VelProfileCyl(rad,phi,z,v1,v2,v3);
-        prim(IM1,ku+k,j,i) = v1;
-        prim(IM2,ku+k,j,i) = v2;
-        prim(IM3,ku+k,j,i) = v3;
-        if (NON_BAROTROPIC_EOS)
-          prim(IEN,ku+k,j,i) = PoverR(rad, phi, z)*prim(IDN,ku+k,j,i);
-      }
-    }
-  }
-}
-
-
-Real massfluxix1(MeshBlock *pmb, int iout){
-  Real massflux = 0.0;
-  int is=pmb->is, ie=pmb->ie, js=pmb->js, je=pmb->je, ks=pmb->ks, ke=pmb->ke;
-  AthenaArray<Real> face1;
-  face1.NewAthenaArray((ie-is)+2*NGHOST+2);
-
-  AthenaArray<Real> x1flux = pmb->phydro->flux[X1DIR];
-
-  if (pmb->pbval->apply_bndry_fn_[BoundaryFace::inner_x1]){
-    for (int k=ks; k<=ke; k++){
-      for (int j=js; j<=je; j++){
-	pmb->pcoord->Face1Area(k , j, is, ie, face1);
-	for (int i=is; i<=is; i++){
-	  massflux += face1(is)*x1flux(0,k,j,is);//x1flux(0) is the density flux, do we want to time volume too?
-        }
-
-      }
-    }
-  }
-
-  face1.DeleteAthenaArray();
-  x1flux.DeleteAthenaArray();
-
-  return massflux;
-
-
-}
 
 
 void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
@@ -1467,3 +1361,31 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
 
 }
 
+
+Real massfluxix1(MeshBlock *pmb, int iout){
+  Real massflux = 0.0;
+  int is=pmb->is, ie=pmb->ie, js=pmb->js, je=pmb->je, ks=pmb->ks, ke=pmb->ke;
+  AthenaArray<Real> face1;
+  face1.NewAthenaArray((ie-is)+2*NGHOST+2);
+
+  AthenaArray<Real> x1flux = pmb->phydro->flux[X1DIR];
+
+  if (pmb->pbval->apply_bndry_fn_[BoundaryFace::inner_x1]){
+    for (int k=ks; k<=ke; k++){
+      for (int j=js; j<=je; j++){
+	pmb->pcoord->Face1Area(k , j, is, ie, face1);
+	for (int i=is; i<=is; i++){
+	  massflux += face1(is)*x1flux(0,k,j,is);//x1flux(0) is the density flux, do we want to time volume too?
+        }
+
+      }
+    }
+  }
+
+  face1.DeleteAthenaArray();
+  x1flux.DeleteAthenaArray();
+
+  return massflux;
+
+
+}
