@@ -554,29 +554,7 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real rad(0.0), phi(0.0), z(0.0);
   Real v1(0.0), v2(0.0), v3(0.0);
-
-	// local vars for background - not implemented
-  //Real den, pres;
-
-
-	// Prepare index bounds including ghost cells
-  int il = is - NGHOST;
-  int iu = ie + NGHOST;
-  int jl = js;
-  int ju = je;
-  if (block_size.nx2 > 1) {
-	  jl -= (NGHOST);
-	  ju += (NGHOST);
-  }
-  int kl = ks;
-  int ku = ke;
-  if (block_size.nx3 > 1) {
-	  kl -= (NGHOST);
-	  ku += (NGHOST);
-  }
-
-  Real rho_floor = 1.0e-5;
-  Real press_init = 1.0e-4;
+  int ID = Globals::my_rank;
 
   //  Initialize density and momenta
   for (int k=ks; k<=ke; ++k) {
@@ -586,6 +564,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         // compute initial conditions in cylindrical coordinates
         phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
         VelProfileCyl(rad,phi,z,v1,v2,v3);
+
+	if (ID==0 && j==64 && i==32){
+
+	  printf("rad, phi, z, k: %g %g %g %d\n", rad, phi, z, k);
+	  
+	  Real p_over_r = p0_over_r0;
+	  if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
+	  printf("poverr %g\n", p_over_r);
+	  printf("expterm, %g %g %g %g\n", GM1/p_over_r, (1./std::sqrt(SQR(rad)+SQR(z))-1./rad),std::sqrt(SQR(rad)+SQR(z)),rad );
+	  printf("dens: %g\n", DenProfileCyl(rad,phi,z));
+	}
+
 
         phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
         phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
@@ -599,9 +589,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       }
     }
   }
+
   return;
 }
-
 
 
 
@@ -1212,6 +1202,7 @@ Real DenProfileCyl(const Real rad, const Real phi, const Real z) {
   if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
   Real denmid = rho0*std::pow(rad/r0,dslope);
   Real dentem = denmid*std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
+  //printf("%g %g %g\n",denmid, std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad)), GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
   den = dentem;
   return std::max(den,dfloor);
 }
