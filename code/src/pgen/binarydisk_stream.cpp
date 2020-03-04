@@ -400,14 +400,14 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 
 	Real vr  = prim(IVX,k,j,i);
 	Real vph = prim(IVY,k,j,i);
-	Real vz  = prim(IVZ,k,j,i);
+	Real vz_cyl  = prim(IVZ,k,j,i);
 
 	//get some angles
 	Real sin_ph = sin(ph);
 	Real cos_ph = cos(ph);
-	Real z_r_ang = atan2(z_cyl,r); //XH atan2 inclues the sign
-	Real cos_zr = cos(z_r_ang);
-	Real sin_zr = sin(z_r_ang);
+	//Real z_r_ang = atan2(z_cyl,r); //XH atan2 inclues the sign
+	Real cos_zr = r/sqrt(r*r+z_cyl*z_cyl);
+	Real sin_zr = z_cyl/sqrt(r*r+z_cyl*z_cyl);
 
 
 	// current position of the secondary
@@ -437,10 +437,8 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//    so in spherical polar, it's like GM1*<1/r>/r. But in cylindrical, I guess we need to use either
 	// Real a_r1 = -GM1/(r*r+z*z); //for not using cell-volume averaged quantities <1/r>, just use r*r+z*z
 	//or 
-	Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
-	//Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/std::sqrt(r*r+z*z); //this is like -GM1*<1/r>/sqrt(z^2+r^2); // 
+	Real a_r1 = -GM1/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
         
-
 
 	// PM2 gravitational accels in cartesian coordinates
 	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
@@ -463,7 +461,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  Real vgas[3];
 	  vgas[0] = cos_ph*vr - sin_ph*vph;
 	  vgas[1] = sin_ph*vr + cos_ph*vph;
-	  vgas[2] = vz;
+	  vgas[2] = vz_cyl;
 
 	  // add the centrifugal and coriolis terms
 
@@ -578,16 +576,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-        GetCylCoord(pcoord,rad,phi,z,i,j,k); // convert to cylindrical coordinates
+	GetCylCoord(pcoord,rad,phi,z,i,j,k); 
+	Real v_phi = sqrt(GM1/rad);
         // compute initial conditions in cylindrical coordinates
         phydro->u(IDN,k,j,i) = rho_floor; //DenProfileCyl(rad,phi,z);
-        //VelProfileCyl(rad,phi,z,v1,v2,v3);
-
         phydro->u(IM1,k,j,i) = 0.0;//phydro->u(IDN,k,j,i)*v1;
-        phydro->u(IM2,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v2;
+        phydro->u(IM2,k,j,i) = 0.0;//phydro->u(IDN,k,j,i)*v_phi;
         phydro->u(IM3,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v3;
         if (NON_BAROTROPIC_EOS) {
-          Real p_over_r = PoverR(rad,phi,z);
           phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
                                        + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
@@ -1296,7 +1292,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh){
   int L1flag = 0;
   Real local_dens = 1.0;
-  Real local_vr = -0.01;
+  Real local_vr = -1.e-4; //-0.01
   Real local_press = 0.01;
   Real local_cs = 0.1;				
   Real rad(0.0), phi(0.0), z(0.0);
@@ -1318,7 +1314,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 
 	  prim(IDN,k,j,ie+i) = local_dens;
 	  prim(IVX,k,j,ie+i) = local_vr;
-	  prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);//Omega_orb*0.62;
+	  prim(IVY,k,j,ie+i) = 0.0;//prim(IVY,k,j,ie);//Omega_orb*0.62;
 	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
 	  
 	  if (NON_BAROTROPIC_EOS) {
@@ -1328,7 +1324,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 	}else{//one-direction outflow
 	  prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
 	  prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
-	  prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);//Omega_orb*0.62;
+	  prim(IVY,k,j,ie+i) = 0.0;//prim(IVY,k,j,ie);//Omega_orb*0.62;
 	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
 	  prim(IEN,k,j,ie+i) = prim(IEN,k,j,ie);
 	}
