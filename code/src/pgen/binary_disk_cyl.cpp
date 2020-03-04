@@ -403,14 +403,14 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 
 	Real vr  = prim(IVX,k,j,i);
 	Real vph = prim(IVY,k,j,i);
-	Real vz  = prim(IVZ,k,j,i);
+	Real vz_cyl  = prim(IVZ,k,j,i);
 
 	//get some angles
 	Real sin_ph = sin(ph);
 	Real cos_ph = cos(ph);
-	Real z_r_ang = atan2(z_cyl,r); //XH atan2 inclues the sign
-	Real cos_zr = cos(z_r_ang);
-	Real sin_zr = sin(z_r_ang);
+	//Real z_r_ang = atan2(z_cyl,r); //XH atan2 inclues the sign
+	Real cos_zr = r/sqrt(r*r+z_cyl*z_cyl);
+	Real sin_zr = z_cyl/sqrt(r*r+z_cyl*z_cyl);
 
 
 	// current position of the secondary
@@ -440,10 +440,8 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//    so in spherical polar, it's like GM1*<1/r>/r. But in cylindrical, I guess we need to use either
 	// Real a_r1 = -GM1/(r*r+z*z); //for not using cell-volume averaged quantities <1/r>, just use r*r+z*z
 	//or 
-	Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
-	//Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/std::sqrt(r*r+z*z); //this is like -GM1*<1/r>/sqrt(z^2+r^2); // 
+	Real a_r1 = -GM1/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
         
-
 
 	// PM2 gravitational accels in cartesian coordinates
 	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
@@ -466,7 +464,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  Real vgas[3];
 	  vgas[0] = cos_ph*vr - sin_ph*vph;
 	  vgas[1] = sin_ph*vr + cos_ph*vph;
-	  vgas[2] = vz;
+	  vgas[2] = vz_cyl;
 
 	  // add the centrifugal and coriolis terms
 
