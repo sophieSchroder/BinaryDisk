@@ -94,6 +94,7 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
 
 
 Real massfluxix1(MeshBlock *pmb, int iout);
+Real massfluxox1(MeshBlock *pmb, int iout);
 
 void KeplerianVel(const Real rad, const Real theta, const Real phi, Real &v1, Real &v2, Real &v3);
 
@@ -230,8 +231,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     EnrollUserRefinementCondition(RefinementCondition);
 
   //Enroll history dump
-  AllocateUserHistoryOutput(1);
+  AllocateUserHistoryOutput(2);
   EnrollUserHistoryOutput(0,massfluxix1,"massfluxix1");
+  EnrollUserHistoryOutput(1,massfluxox1,"massfluxox1");
 
   // always write at startup
   trackfile_next_time = time;
@@ -1292,7 +1294,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh){
   int L1flag = 0;
   Real local_dens = 1.0;
-  Real local_vr = -1.e-4; //-0.01
+  Real local_vr = -0.01;
   Real local_press = 0.01;
   Real local_cs = 0.1;				
   Real rad(0.0), phi(0.0), z(0.0);
@@ -1372,6 +1374,34 @@ Real massfluxix1(MeshBlock *pmb, int iout){
 	pmb->pcoord->Face1Area(k , j, is, ie, face1);
 	for (int i=is; i<=is; i++){
 	  massflux += face1(is)*x1flux(0,k,j,is);//x1flux(0) is the density flux, do we want to time volume too?
+        }
+
+      }
+    }
+  }
+
+  face1.DeleteAthenaArray();
+  x1flux.DeleteAthenaArray();
+
+  return massflux;
+
+
+}
+
+Real massfluxox1(MeshBlock *pmb, int iout){
+  Real massflux = 0.0;
+  int is=pmb->is, ie=pmb->ie, js=pmb->js, je=pmb->je, ks=pmb->ks, ke=pmb->ke;
+  AthenaArray<Real> face1;
+  face1.NewAthenaArray((ie-is)+2*NGHOST+2);
+
+  AthenaArray<Real> x1flux = pmb->phydro->flux[X1DIR];
+
+  if (pmb->pbval->apply_bndry_fn_[BoundaryFace::outer_x1]){
+    for (int k=ks; k<=ke; k++){
+      for (int j=js; j<=je; j++){
+	pmb->pcoord->Face1Area(k , j, is, ie, face1);
+	for (int i=ie; i<=ie; i++){
+	  massflux += face1(ie)*x1flux(0,k,j,ie+1);//x1flux(0) is the density flux, do we want to time volume too?
         }
 
       }
