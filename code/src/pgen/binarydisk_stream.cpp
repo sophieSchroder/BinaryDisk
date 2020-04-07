@@ -1232,7 +1232,7 @@ Real massfluxix1(MeshBlock *pmb, int iout){
       for (int j=js; j<=je; j++){
 	pmb->pcoord->Face1Area(k , j, is, ie, face1);
 	for (int i=is; i<=is; i++){
-	  massflux += face1(is)*x1flux(0,k,j,is);//x1flux(0) is the density flux, do we want to time volume too?
+	  massflux += face1(is)*x1flux(0,k,j,is)*pmb->pcoord->GetCellVolume(k,j,i);//x1flux(0) is the density flux, multiply by volume to get mass
         }
 
       }
@@ -1260,7 +1260,7 @@ Real massfluxox1(MeshBlock *pmb, int iout){
       for (int j=js; j<=je; j++){
 	pmb->pcoord->Face1Area(k , j, is, ie, face1);
 	for (int i=ie; i<=ie; i++){
-	  massflux += face1(ie)*x1flux(0,k,j,ie+1);//x1flux(0) is the density flux, do we want to time volume too?
+	  massflux += face1(ie)*x1flux(0,k,j,ie+1)*pmb->pcoord->GetCellVolume(k,j,i);//x1flux(0) is the density flux, multiply by volume to get mass
         }
 
       }
