@@ -40,6 +40,7 @@
 #include "../mesh/mesh.hpp"
 #include "../bvals/bvals.hpp"
 #include "../utils/utils.hpp"
+#include "../globals.hpp"
 
 
 // wind  bousaries
@@ -411,6 +412,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//or 
 	//Real a_r1 = -GM1/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2, 
         Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
+	//if (Globals::my_rank==0 && i==pmb->is && j==40){printf("ar1: %g\n", -GM1*pmb->pcoord->coord_src1_i_(i)/r)}
 
 	// PM2 gravitational accels in cartesian coordinates
 	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
@@ -441,7 +443,14 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  Real Omega_x_r[3], Omega_x_Omega_x_r[3];
 	  cross(Omega,rxyz,Omega_x_r);
 	  cross(Omega,Omega_x_r,Omega_x_Omega_x_r);
-
+	  
+	  
+	  //Real xcomp = - Omega_x_Omega_x_r[0];
+	  //Real ycomp = - Omega_x_Omega_x_r[1];
+	  //Real rcomp = cos_ph*xcomp + sin_ph*ycomp;
+	  //Real phcomp = -sin_ph*xcomp + cos_ph*ycomp;
+	  //Real rho = pmb->phydro->u(IDN,k,j,i);
+	  //if (Globals::my_rank==0 && i==pmb->is && j==40){printf("rcomp %g, ycomp %g, centri %g \n", rcomp, phcomp, vph*vph/r);}
 	  a_x += - Omega_x_Omega_x_r[0];
 	  a_y += - Omega_x_Omega_x_r[1];
 	  a_z_cart += - Omega_x_Omega_x_r[2];
@@ -463,10 +472,12 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	}
 
 	// convert back to cylindrical , double-check here, cos_ph, sin_ph, cos_zr, sin_zr
+	//if (Globals::my_rank==0 && i==pmb->is && j==40){printf("a_x, a_y: %g %g\n", a_x, a_y);}
 	Real a_r  = cos_ph*a_x + sin_ph*a_y;
 	Real a_ph = -sin_ph*a_x + cos_ph*a_y;
 	Real a_z_cyl  = a_z_cart;
-
+	
+	//if (Globals::my_rank==0 && i==pmb->is && j==40){printf("ar1: %g, %g, %g\n",prim(IDN,k,j,i), a_r1, cos_zr);}
 	// add the PM1 accel
 	a_r += a_r1*cos_zr;
 	a_z_cyl += a_r1*sin_zr;
@@ -482,9 +493,12 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 
 	// add the source term to the momenta  (source = - rho * a)
 
+	//if (Globals::my_rank==0 && i==pmb->is && j==40){printf("v1: src1: %g %g\n", cons(IM1,k,j,i)/cons(IDN,k,j,i), src_1/cons(IDN,k,j,i));}
 	cons(IM1,k,j,i) += src_1;
 	cons(IM2,k,j,i) += src_2;
 	cons(IM3,k,j,i) += src_3;
+
+	
 
 	if (NON_BAROTROPIC_EOS) {
 	  // update the energy (source = - rho v dot a
@@ -548,13 +562,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-	//GetCylCoord(pcoord,rad,phi,z,i,j,k); 
-	Real v_phi = sqrt(GM1/rad);
         // compute initial conditions in cylindrical coordinates
-        phydro->u(IDN,k,j,i) = rho_floor; //DenProfileCyl(rad,phi,z);
-        phydro->u(IM1,k,j,i) = 0.0;//phydro->u(IDN,k,j,i)*v1;
-        phydro->u(IM2,k,j,i) = 0.0;//phydro->u(IDN,k,j,i)*v_phi;
-        phydro->u(IM3,k,j,i) = 0.0; //phydro->u(IDN,k,j,i)*v3;
+        phydro->u(IDN,k,j,i) = rho_floor; 
+        phydro->u(IM1,k,j,i) = 0.0;
+        phydro->u(IM2,k,j,i) = rho_floor*pcoord->x1v(i)*(sqrt(GM1/pow(pcoord->x1v(i),3))-sqrt((GM1+GM2)/pow(sma,3)));
+        phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS) {
           phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
@@ -1150,6 +1162,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
   int L1flag = 0;
   Real local_dens = 1.0;
   Real local_vr = -0.01;
+  
   Real local_press = 0.01;
   Real local_cs = 0.1;				
   Real rad(0.0), phi(0.0), z(0.0);
@@ -1163,15 +1176,11 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
       Real phi_coord = pco->x2v(j);
       for (int i=1; i<=(NGHOST); ++i) {//R
 
-	rad = pco->x1v(i);
-	phi = pco->x2v(j);
-	z = pco->x3v(k);
-
 	if (fabs(phi_coord)<=0.1){// if within L1 point
 
 	  prim(IDN,k,j,ie+i) = local_dens;
 	  prim(IVX,k,j,ie+i) = local_vr;
-	  prim(IVY,k,j,ie+i) = 0.0;//prim(IVY,k,j,ie);//Omega_orb*0.62;
+	  prim(IVY,k,j,ie+i) = 0.0; //pco->coord(ie+i)*sqrt(GM1/pow(sma,3)); //since we are in the corotating frame
 	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
 	  
 	  if (NON_BAROTROPIC_EOS) {
@@ -1181,7 +1190,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 	}else{//one-direction outflow
 	  prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
 	  prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
-	  prim(IVY,k,j,ie+i) = 0.0;//prim(IVY,k,j,ie);//Omega_orb*0.62;
+	  prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
 	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
 	  if (NON_BAROTROPIC_EOS){
 	    prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
@@ -1205,7 +1214,7 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
       for (int i=1; i<=(NGHOST); ++i) {//R
 	prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
 	prim(IVX,k,j,is-i) = std::min(0.0, prim(IVX,k,j,is));
-	prim(IVY,k,j,is-i) = 0.0;
+	prim(IVY,k,j,is-i) = pco->x1v(is-i)*(sqrt(GM1/pow(pco->x1v(is-i),3))-sqrt((GM1+GM2)/pow(sma,3)));
 	prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
 	if (NON_BAROTROPIC_EOS){
 	  prim(IPR,k,j,is-i) = prim(IPR,k,j,is);
