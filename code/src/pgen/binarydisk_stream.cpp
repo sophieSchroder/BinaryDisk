@@ -93,6 +93,9 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh);
 
+void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+		      int is, int ie, int js, int je, int ks, int ke, int ngh);
+
 
 Real massfluxix1(MeshBlock *pmb, int iout);
 Real massfluxox1(MeshBlock *pmb, int iout);
@@ -136,7 +139,7 @@ Real Ggrav;
 
 
 // restart simulations
-int is_restart;
+int is_restart, change_setup;
 
 
 
@@ -165,6 +168,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   GM2 = pin->GetOrAddReal("problem","GM2",1.0);
   r0 = pin->GetOrAddReal("problem","r0",1.0);
   corotating_frame = pin->GetInteger("problem","corotating_frame");
+  
 
   // softening of companion gravity
   rsoft2 = pin->GetOrAddReal("problem","rsoft2",0.1);
@@ -185,6 +189,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   Real float_min = std::numeric_limits<float>::min();
   dfloor=pin->GetOrAddReal("hydro","dfloor",(1024*(float_min)));
 
+  change_setup = pin->GetOrAddReal("problem", "change_setup", 0);
 
 
   // // enroll the BCs
@@ -197,8 +202,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   if (mesh_bcs[BoundaryFace::inner_x1] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(BoundaryFace::inner_x1, OutflowInnerX1);
   }
+  
   if (mesh_bcs[BoundaryFace::outer_x1] == GetBoundaryFlag("user")) {
-    EnrollUserBoundaryFunction(BoundaryFace::outer_x1, StreamingOuterX1);
+    if (change_setup==0){
+      EnrollUserBoundaryFunction(BoundaryFace::outer_x1, StreamingOuterX1);
+    }else{
+      EnrollUserBoundaryFunction(BoundaryFace::outer_x1, OutflowOuterX1);
+    }
   }
 
 
@@ -285,6 +295,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 
   }else{
+    change_setup = pin->GetOrAddReal("problem", "change_setup", 0);
     is_restart=1;
   }
 
@@ -385,7 +396,38 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
       std::cout <<"vi="<<vi[0]<<" "<<vi[1]<<" "<<vi[2]<<"\n";
       std::cout <<"Omega="<<Omega[0]<<" "<<Omega[1]<<" "<<Omega[2]<<"\n";
     }
+    if (change_setup==1){
+      Real vcirc, Omega_orb;
+      xi[0] = sma*(1.0 + ecc);  // apocenter
+      xi[1] = 0.0;
+      xi[2] = 0.0;  
+    
+      vcirc = sqrt((GM1+GM2)/sma);
+      Omega_orb = vcirc/sma;
+
+      vi[0] = 0.0;
+      vi[1]= sqrt( vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc) ); //v_apocenter
+      vi[2] = 0.0;
+
+      Omega[0] = pmb->pmy_mesh->ruser_mesh_data[2](0);
+      Omega[1] = pmb->pmy_mesh->ruser_mesh_data[2](1);
+      Omega[2] = pmb->pmy_mesh->ruser_mesh_data[2](2);
+
+      if(corotating_frame == 1){
+	Omega[2] = Omega_orb;
+	vi[1] -=  Omega[2]*xi[0];
+      }
+
+      if (Globals::my_rank==0){
+	std::cout << "*** Change initial conditions for restart ***\n";
+	std::cout <<"xi="<<xi[0]<<" "<<xi[1]<<" "<<xi[2]<<"\n";
+	std::cout <<"vi="<<vi[0]<<" "<<vi[1]<<" "<<vi[2]<<"\n";
+	std::cout <<"Omega="<<Omega[0]<<" "<<Omega[1]<<" "<<Omega[2]<<"\n";
+      }
+    }
+
     is_restart=0;
+    change_setup=0;
   }
 
 
@@ -1272,6 +1314,24 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
 
 }
 
+
+void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+		    int is, int ie, int js, int je, int ks, int ke, int ngh){
+  for (int k=ks; k<=ke; ++k) {//z
+    for (int j=js; j<=je; ++j) {//phi
+      Real phi_coord = pco->x2v(j);
+      for (int i=1; i<=(NGHOST); ++i) {//R
+	  prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
+	  prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
+	  prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
+	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
+	  if (NON_BAROTROPIC_EOS){
+	    prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
+	  }
+      }
+    }
+  }
+}
 
 Real massfluxix1(MeshBlock *pmb, int iout){
   Real massflux = 0.0;
