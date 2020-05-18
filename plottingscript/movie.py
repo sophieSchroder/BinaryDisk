@@ -19,11 +19,12 @@ rc('font',family='serif',size=12)
 FFwriter = animation.FFMpegWriter(fps=30, extra_args=['-vcodec','libx264','-pix_fmt','yuv420p'])
 
 #reading a hdf5 data dumps to get dimension info, change file name as you want : )
-frame = athdf("BDstream.out1.00019.athdf")
+base_dir = '/Users/sophielundschroder/Dropbox/Data_binDisk/ecc_test/ecc/'
+frame = athdf(base_dir+"BDrst_ecc.out1.00151.athdf")
 
 #the range in R direction we want to plot, it's the cell number, not physical distance, change them as you want
 rmin = 0
-rmax = 256
+rmax = 384
 
 #creat np.meshgrid from the coordinate, for cylindrical
 #['x1f'] is the face-centered R direction coordinates, ['x3f'] is the face-centered Phi direction coordinates. 
@@ -37,20 +38,21 @@ spec = gridspec.GridSpec(ncols=30,nrows=1)
 ax0 = fig.add_subplot(spec[0,:-1])
 cbar = fig.add_subplot(spec[0,-1])
 
-def animated(i):
+def animated(ia):
+    i = ia+151
     #change file names here accordingly
     if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
+        name = base_dir+'BDrst_ecc.out1.0000'+str(i)+'.athdf'
     elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
+        name = base_dir+'BDrst_ecc.out1.00'+str(i)+'.athdf'
     else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
+        name = base_dir+'BDrst_ecc.out1.000'+str(i)+'.athdf'
 
     frame = athdf(name)
         
     print("plotting "+name+"...")
 
-    im = ax0.pcolormesh(Y,X,frame['rho'][0,:,rmin:rmax],norm=colors.LogNorm(vmin=0.001, vmax=0.5)) 
+    im = ax0.pcolormesh(Y,X,frame['rho'][0,:,rmin:rmax], cmap='magma',norm=colors.LogNorm(vmin=1e-2, vmax=10**(0.5))) 
     ax0.set_aspect(1.0)
     ax0.set_title("time="+str(frame['Time']))
     ax0.set_xlabel(r"$r\cos\phi$")
@@ -63,4 +65,4 @@ def animated(i):
 
 
 anim = animation.FuncAnimation(fig, animated, frames=100, interval=200, blit=True) #change frames= number of frames
-anim.save('BDcyl.mov',writer=FFwriter)
+anim.save('ecc02.mov',writer=FFwriter)

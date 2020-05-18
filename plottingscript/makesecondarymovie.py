@@ -17,17 +17,20 @@ rc('text',usetex=True)
 rc('font',family='serif',size=12)
 
 #creat movie writter
-FFwriter = animation.FFMpegWriter(fps=20, extra_args=['-vcodec','libx264','-pix_fmt','yuv420p'])
+FFwriter = animation.FFMpegWriter(fps=10, extra_args=['-vcodec','libx264','-pix_fmt','yuv420p'])
+
+base_dir = "/Users/sophielundschroder/Dropbox/Data_binDisk/ecc_test/ecc/"
 
 #reading in pm_trackfile using pandas
-pmtrackfile = pd.read_csv("pmtrack_circ.dat",delim_whitespace=True)
+pmtrackfile = pd.read_csv(base_dir  +"pm_trackfile.dat",delim_whitespace=True)
 
 #reading the hdf5 data dumps
-frame = athdf("BDrst_circ.out1.00156.athdf")
+
+frame = athdf(base_dir +"BDrst_ecc.out1.00405.athdf")
 
 #the range in R direction we want to plot, in index
 rmin = 0
-rmax = 128
+rmax = 384
 
 #creat np.meshgrid from the coordinate
 #['x1f'] is the face-centered R direction coordinates, ['x2f'] is the face-centered Phi direction coordinates. 
@@ -45,21 +48,22 @@ ax0 = fig.add_subplot(spec[0,:-1])
 
 def animated(i):
     ax0.clear()
-
+    
+    
     #track file time 
-    pmtrack_index = i+1
+    pmtrack_index = i*5+1
     secondary_x = pmtrackfile.x.iloc[1:i+2]
     secondary_y = pmtrackfile.y.iloc[1:i+2]
 
     #change file names here accordingly
-    hdf5_index = 156+i
+    hdf5_index = 405+i*5
 
     if hdf5_index < 10:
-        name = 'BDrst_circ.out1.0000'+str(hdf5_index)+'.athdf'
+        name = base_dir +'BDrst_ecc.out1.0000'+str(hdf5_index)+'.athdf'
     elif hdf5_index  >=100:
-        name = 'BDrst_circ.out1.00'+str(hdf5_index)+'.athdf'
+        name = base_dir +'BDrst_ecc.out1.00'+str(hdf5_index)+'.athdf'
     else:
-        name = 'BDrst_circ.out1.000'+str(hdf5_index)+'.athdf'
+        name = base_dir +'BDrst_ecc.out1.000'+str(hdf5_index)+'.athdf'
 
     frame = athdf(name)
         
@@ -80,5 +84,5 @@ def animated(i):
     return [im]
 
 
-anim = animation.FuncAnimation(fig, animated, frames=95, interval=200, blit=True) #change frames= number of frames
-anim.save('BDrst_circ.mov',writer=FFwriter)
+anim = animation.FuncAnimation(fig, animated, frames=240, interval=200, blit=True) #change frames= number of frames
+anim.save('BDrst_ecc02.mov',writer=FFwriter)
