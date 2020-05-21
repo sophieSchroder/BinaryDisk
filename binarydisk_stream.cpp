@@ -250,7 +250,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   ruser_mesh_data[0].NewAthenaArray(3);
   ruser_mesh_data[1].NewAthenaArray(3);
   ruser_mesh_data[2].NewAthenaArray(3);
-  ruser_mesh_data[3].NewAthenaArray(7,blocksizex3, blocksizex2, blocksizex1);
+  ruser_mesh_data[3].NewAthenaArray(10,blocksizex3, blocksizex2, blocksizex1);
 
   
 
@@ -491,6 +491,21 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	a_x += -  GM2 / d12c * x_2;
 	a_y += -  GM2 / d12c * y_2;
 	a_z_cart += -  GM2 / d12c * z_2;
+
+	//store net external acceleration to user variable
+	Real a_r_net = cos_ph*a_x + sin_ph*a_y;
+	Real a_ph_net = -sin_ph*a_x + cos_ph*a_y;
+	Real a_z_net = a_z_cart;
+	//add m1
+	a_r_net += a_r1*cos_zr;
+	a_z_net += a_r1*sin_zr;
+
+	Real den = prim(IDN,k,j,i);
+
+        pmb->pmy_mesh->ruser_mesh_data[3](7,k,j,i) = den*a_r_net;
+	pmb->pmy_mesh->ruser_mesh_data[3](8,k,j,i) = den*a_ph_net;
+	pmb->pmy_mesh->ruser_mesh_data[3](9,k,j,i) = den*a_z_net;
+
 	if(corotating_frame == 1){
 	  // distance from the origin in cartesian (vector)
 	  Real rxyz[3];
@@ -533,7 +548,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	  a_z_cart += -agas1i[2];
 	}
 	
-	// convert back to cylindrical , double-check here, cos_ph, sin_ph, cos_zr, sin_zr
+	// convert back to cylindrical 
 	Real a_r  = cos_ph*a_x + sin_ph*a_y;
 	Real a_ph = -sin_ph*a_x + cos_ph*a_y;
 	Real a_z_cyl  = a_z_cart;
@@ -545,7 +560,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//
 	// ADD SOURCE TERMS TO THE GAS MOMENTA/ENERGY
 	//
-	Real den = prim(IDN,k,j,i);
+
 
 	Real src_1 = dt*den*a_r;
 	Real src_2 = dt*den*a_ph;
@@ -592,7 +607,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
 
-  AllocateUserOutputVariables(6); //store two point mass function
+  AllocateUserOutputVariables(9); //store two point mass function
   return;
 }
 
@@ -600,12 +615,16 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
   for(int k=ks; k<=ke; k++){
     for(int j=js; j<=je; j++){
       for(int i=is; i<=ie; i++){
-	user_out_var(0,k,j,i) = pmy_mesh->ruser_mesh_data[3](0,k,j,i);
-	user_out_var(1,k,j,i) = pmy_mesh->ruser_mesh_data[3](1,k,j,i);
-	user_out_var(2,k,j,i) = pmy_mesh->ruser_mesh_data[3](2,k,j,i);
-	user_out_var(3,k,j,i) = pmy_mesh->ruser_mesh_data[3](4,k,j,i);
-	user_out_var(4,k,j,i) = pmy_mesh->ruser_mesh_data[3](5,k,j,i);
-	user_out_var(5,k,j,i) = pmy_mesh->ruser_mesh_data[3](6,k,j,i);
+	user_out_var(0,k,j,i) = pmy_mesh->ruser_mesh_data[3](0,k,j,i);//cons, fext_r
+	user_out_var(1,k,j,i) = pmy_mesh->ruser_mesh_data[3](1,k,j,i);//cons, fext_theta
+	user_out_var(2,k,j,i) = pmy_mesh->ruser_mesh_data[3](2,k,j,i);//cons, fext_z
+	user_out_var(3,k,j,i) = pmy_mesh->ruser_mesh_data[3](4,k,j,i);//prim, aext_r
+	user_out_var(4,k,j,i) = pmy_mesh->ruser_mesh_data[3](5,k,j,i);//prim, aext_theta
+	user_out_var(5,k,j,i) = pmy_mesh->ruser_mesh_data[3](6,k,j,i);//prim, aext_z
+	user_out_var(6,k,j,i) = pmy_mesh->ruser_mesh_data[3](7,k,j,i);//prim, fext_r, no corotate
+	user_out_var(7,k,j,i) = pmy_mesh->ruser_mesh_data[3](8,k,j,i);//prim, fext_theta, no corotate
+	user_out_var(8,k,j,i) = pmy_mesh->ruser_mesh_data[3](9,k,j,i);//prim, fext_z, no corotate
+       
       }
     }
   }
