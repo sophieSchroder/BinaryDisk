@@ -246,12 +246,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   if (blocksizex2 >1) blocksizex2 += 2*(NGHOST);
   if (blocksizex3 >1) blocksizex3 += 2*(NGHOST);
 
-  AllocateRealUserMeshDataField(4);
+  AllocateRealUserMeshDataField(5);
   ruser_mesh_data[0].NewAthenaArray(3);
   ruser_mesh_data[1].NewAthenaArray(3);
   ruser_mesh_data[2].NewAthenaArray(3);
   ruser_mesh_data[3].NewAthenaArray(10,blocksizex3, blocksizex2, blocksizex1);
-
+  //check the gravitational potential
+  ruser_mesh_data[4].NewAthenaArray(1,blocksizex3, blocksizex2, blocksizex1);
   
 
   //ONLY enter ICs loop if this isn't a restart
@@ -468,6 +469,9 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 			pow(y-y_2, 2) +
 			pow(z_cart-z_2, 2) );
 
+	//compute the direct gravitational potential
+	Real gravphi = -GM1/r - GM2/d2;
+
 	//
 	//  COMPUTE ACCELERATIONS
 	//
@@ -492,17 +496,20 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real a_ph_net = -sin_ph*a_x + cos_ph*a_y;
 	Real a_z_net = a_z_cart;
 
+	// add the correction for the orbiting frame (relative to the COM)
+	a_x += -  GM2 / d12c * x_2;
+	a_y += -  GM2 / d12c * y_2;
+	a_z_cart += -  GM2 / d12c * z_2;
+
 	Real den = prim(IDN,k,j,i);
 
         pmb->pmy_mesh->ruser_mesh_data[3](7,k,j,i) = den*a_r_net;
 	pmb->pmy_mesh->ruser_mesh_data[3](8,k,j,i) = den*a_ph_net;
 	pmb->pmy_mesh->ruser_mesh_data[3](9,k,j,i) = den*a_z_net;
 
-	// add the correction for the orbiting frame (relative to the COM)
-	a_x += -  GM2 / d12c * x_2;
-	a_y += -  GM2 / d12c * y_2;
-	a_z_cart += -  GM2 / d12c * z_2;
-
+	//add the indirec term to grav potential due to the orbiting frame
+	gravphi += GM2*(x_2*x+y_2*y+z_cart*z_2)/pow(d12c, 2);
+	pmb->pmy_mesh->ruser_mesh_data[4](0,k,j,i) = gravphi; //store the grav potential
 
 
 	if(corotating_frame == 1){
@@ -606,46 +613,109 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
 
-  AllocateUserOutputVariables(14); //store two point mass function
+  AllocateUserOutputVariables(13); //store two point mass function
   return;
 }
 
 void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
+
+  AthenaArray<Real> &x1flux = phydro->flux[X1DIR];
+  AthenaArray<Real> &x2flux = phydro->flux[X2DIR];
+  AthenaArray<Real> face1, face1_m, face1_p;
+
+  face1.NewAthenaArray((ie-is)+2*NGHOST+2);
+  face1_m.NewAthenaArray((ie-is)+2*NGHOST+2);
+  face1_p.NewAthenaArray((ie-is)+2*NGHOST+2);
+  
+
   for(int k=ks; k<=ke; k++){
-    for(int j=js; j<=je; j++){
-      for(int i=is; i<=ie; i++){
+    for(int i=is; i<=ie; i++){
+
+      //cell center variables
+      Real rad_c = pcoord->x1v(i);
+      Real vkep_c = sqrt(GM1/rad_c);
+      
+      //face i+1/2
+      Real rad_p = pcoord->x1f(i);
+      Real vkep_p = sqrt(GM1/rad_p);
+      //face i+1
+      Real rad_pp = pcoord->x1f(i+1);
+      Real vkep_pp = sqrt(GM1/rad_pp);
+      //face i-1/2
+      Real rad_m = pcoord->x1f(i-1);
+      Real vkep_m = sqrt(GM1/rad_m);
+
+      for(int j=js; j<=je; j++){
+
 	//Storing everything we added to RHS of hydro eqs in the user defined source TwoPointMass
 	user_out_var(0,k,j,i) = pmy_mesh->ruser_mesh_data[3](0,k,j,i);//cons, fext_r
 	user_out_var(1,k,j,i) = pmy_mesh->ruser_mesh_data[3](1,k,j,i);//cons, fext_theta
 	user_out_var(2,k,j,i) = pmy_mesh->ruser_mesh_data[3](2,k,j,i);//cons, fext_z
-	user_out_var(3,k,j,i) = pmy_mesh->ruser_mesh_data[3](4,k,j,i);//prim, aext_r
-	user_out_var(4,k,j,i) = pmy_mesh->ruser_mesh_data[3](5,k,j,i);//prim, aext_theta
-	user_out_var(5,k,j,i) = pmy_mesh->ruser_mesh_data[3](6,k,j,i);//prim, aext_z
-	user_out_var(6,k,j,i) = pmy_mesh->ruser_mesh_data[3](7,k,j,i);//prim, fext_r, no corotate
-	user_out_var(7,k,j,i) = pmy_mesh->ruser_mesh_data[3](8,k,j,i);//prim, fext_theta, no corotate
-	user_out_var(8,k,j,i) = pmy_mesh->ruser_mesh_data[3](9,k,j,i);//prim, fext_z, no corotate
+	user_out_var(3,k,j,i) = pmy_mesh->ruser_mesh_data[3](7,k,j,i);//cons, fext_r, no corotate
+	user_out_var(4,k,j,i) = pmy_mesh->ruser_mesh_data[3](8,k,j,i);//cons, fext_theta, no corotate
+	user_out_var(5,k,j,i) = pmy_mesh->ruser_mesh_data[3](9,k,j,i);//cons, fext_z, no corotate
+
+	//store grav_phi
+	user_out_var(6,k,j,i) = pmy_mesh->ruser_mesh_data[4](0,k,j,i);
+
+	//F_grav,r = -(rho/2dR)*(phi(i+1,j)-phi(i-1,j))
+        //Real gradphi_r = -(rho/(2*deltaR))*(pmy_mesh->ruser_mesh_data[4](0,k,j,i+1)-pmy_mesh->ruser_mesh_data[4](0,k,j,i-1));
+	//user_out_var(15,k,j,i) = gradphi_r;
+
+	//F_grav,phi = -(rho/2R*deltaPhi)*(phi(i,j+1)-phi(i,j-1))
+	//Real gradphi_phi = -(rho/(2*Rad*deltaphi))*(pmy_mesh->ruser_mesh_data[4](0,k,j+1,i)-pmy_mesh->ruser_mesh_data[4](0,k,j-1,i));
+	//user_out_var(16,k,j,i) = gradphi_phi;
 
 
-	//for angular momentum budget, only output zonal averaged quantities in <>, and volume
-	Real vcirc = sqrt((GM1+GM2)/sma);
-	Real Omega_orb = vcirc/sma;
-	Real rad = pcoord->x1v(i);
-	Real v_kep = sqrt(GM1/rad);
-	Real deltav = phydro->w(IVY,k,j,i) + rad*Omega_orb - v_kep;
-	Real rho = phydro->u(IDN,k,j,i);
-	//dAMdt = d(rho*R*deltav)/dt
-	user_out_var(9,k,j,i) = rho*rad*deltav*pcoord->GetCellVolume(k,j,i); 
-	//AM_Mdot = <R*rho*vr>*d(R*vk)/dR, only output <R*rho*vr>
-	user_out_var(10,k,j,i) = rad*rho*phydro->w(IVX,k,j,i)*pcoord->GetCellVolume(k,j,i); 
-	//AM_FH = -d(R*R*<rho*vr*deltav>)/dr
-	user_out_var(11,k,j,i) = rho*phydro->w(IVX,k,j,i)*deltav*pcoord->GetCellVolume(k,j,i); 
-	//T(R) = <R cross Fext> R
-	user_out_var(12,k,j,i) = pmy_mesh->ruser_mesh_data[3](8,k,j,i)*rad*pcoord->GetCellVolume(k,j,i);
-	//cell volume
-	user_out_var(13,k,j,i) = pcoord->GetCellVolume(k,j,i);
+	//AM check, zonal average
+        //cell center variables
+	Real rho_c = phydro->u(IDN,k,j,i);
+	Real vphi_c = phydro->w(IM2,k,j,i);
+	Real vr_c = phydro->w(IM1,k,j,i);
+
+	//try linear intepolation along r direction
+	Real rho_p = (phydro->u(IDN,k,j,i) + phydro->u(IDN,k,j,i+1))/2.0;
+	Real vr_p = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i+1))/2.0;
+	Real vphi_p = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i+1))/2.0;
+	Real rho_m = (phydro->u(IDN,k,j,i) + phydro->u(IDN,k,j,i-1))/2.0;
+	Real vr_m = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i-1))/2.0;
+	Real vphi_m = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i-1))/2.0;
+
+	pcoord->Face1Area(k , j, is, ie, face1);
+	pcoord->Face1Area(k , j, is-1, ie, face1_m);
+	pcoord->Face1Area(k , j, is, ie+1, face1_p);
+
+	//dAMdt, only show AM = rho*R*(v-vkep)
+	user_out_var(7,k,j,i) = rho_c*rad_c*(vphi_c-vkep_c)*pcoord->GetCellVolume(k,j,i);
+
+	//AM Mdot
+	Real AMMdot = -rad_c*x1flux(0,k,j,i)*(vkep_p*face1(i)- vkep_m*face1_m(i-1));
+	user_out_var(8,k,j,i) = AMMdot;
+
+	//AMTH
+	Real TH_p = rho_p*vr_p*(vphi_p-vkep_p);
+	Real TH_m = rho_m*vr_m*(vphi_m-vkep_m);
+	Real AMTH = rad_p*TH_p*face1(i) - rad_m*TH_m*face1_m(i-1);
+	//Riemann solver flux? rho*vr*vphi = x1flux(rho*vphi), rho*vr*vk=x1flux(rho*vr)*vk
+	Real AMTH_ = rad_pp*face1_p(i+1)*(x1flux(2,k,j,i+1)-x1flux(0,k,j,i+1)*vkep_pp) - rad_p*face1(i)*(x1flux(2,k,j,i)-x1flux(0,k,j,i)*vkep_p);
+	user_out_var(9,k,j,i) = -AMTH;
+	user_out_var(10,k,j,i) = -AMTH_;
+
+	//Torque
+	// fect includes Coriolis force
+	Real Torque = rad_c*pmy_mesh->ruser_mesh_data[3](1,k,j,i)*pcoord->GetCellVolume(k,j,i);
+	// fext has no Coriolis force component
+	Real Torque_ =  rad_c*pmy_mesh->ruser_mesh_data[3](8,k,j,i)*pcoord->GetCellVolume(k,j,i); 
+	user_out_var(11,k,j,i) = Torque;
+	user_out_var(12,k,j,i) = Torque_;
+     
       }
+
+
     }
   }
+
+  
 
 }
 
