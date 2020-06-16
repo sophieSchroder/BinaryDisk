@@ -632,17 +632,15 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
     for(int i=is; i<=ie; i++){
 
       //cell center variables
-      Real rad_c = pcoord->x1v(i);
+      Real rad_c = pcoord->x1v(i+1);
       Real vkep_c = sqrt(GM1/rad_c);
       
       //face i+1/2
-      Real rad_p = pcoord->x1f(i);
+      Real rad_p = pcoord->x1f(i+1);
       Real vkep_p = sqrt(GM1/rad_p);
-      //face i+1
-      Real rad_pp = pcoord->x1f(i+1);
-      Real vkep_pp = sqrt(GM1/rad_pp);
+
       //face i-1/2
-      Real rad_m = pcoord->x1f(i-1);
+      Real rad_m = pcoord->x1f(i);
       Real vkep_m = sqrt(GM1/rad_m);
 
       for(int j=js; j<=je; j++){
@@ -669,43 +667,43 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 
 	//AM check, zonal average
         //cell center variables
-	Real rho_c = phydro->u(IDN,k,j,i);
-	Real vphi_c = phydro->w(IM2,k,j,i);
-	Real vr_c = phydro->w(IM1,k,j,i);
+	Real rho_c = phydro->u(IDN,k,j,i+1);
+	Real vphi_c = phydro->w(IM2,k,j,i+1);
+	Real vr_c = phydro->w(IM1,k,j,i+1);
 
 	//try linear intepolation along r direction
-	Real rho_p = (phydro->u(IDN,k,j,i) + phydro->u(IDN,k,j,i+1))/2.0;
-	Real vr_p = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i+1))/2.0;
-	Real vphi_p = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i+1))/2.0;
-	Real rho_m = (phydro->u(IDN,k,j,i) + phydro->u(IDN,k,j,i-1))/2.0;
-	Real vr_m = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i-1))/2.0;
-	Real vphi_m = (phydro->w(IM1,k,j,i) + phydro->w(IM1,k,j,i-1))/2.0;
+	Real rho_p = (phydro->u(IDN,k,j,i+1) + phydro->u(IDN,k,j,i+2))/2.0;
+	Real vr_p = (phydro->w(IM1,k,j,i+1) + phydro->w(IM1,k,j,i+2))/2.0;
+	Real vphi_p = (phydro->w(IM1,k,j,i+1) + phydro->w(IM1,k,j,i+2))/2.0;
+	Real rho_m = (phydro->u(IDN,k,j,i+1) + phydro->u(IDN,k,j,i))/2.0;
+	Real vr_m = (phydro->w(IM1,k,j,i+1) + phydro->w(IM1,k,j,i))/2.0;
+	Real vphi_m = (phydro->w(IM1,k,j,i+1) + phydro->w(IM1,k,j,i))/2.0;
 
-	pcoord->Face1Area(k , j, is, ie, face1);
+	pcoord->Face1Area(k , j, is, ie+1, face1);
 	pcoord->Face1Area(k , j, is-1, ie, face1_m);
 	pcoord->Face1Area(k , j, is, ie+1, face1_p);
 
 	//dAMdt, only show AM = rho*R*(v-vkep)
-	user_out_var(7,k,j,i) = rho_c*rad_c*(vphi_c-vkep_c)*pcoord->GetCellVolume(k,j,i);
+	user_out_var(7,k,j,i) = rho_c*rad_c*(vphi_c-vkep_c)*pcoord->GetCellVolume(k,j,i+1);
 
 	//AM Mdot
-	Real AMMdot = -rad_c*x1flux(0,k,j,i)*(vkep_p*face1(i)- vkep_m*face1_m(i-1));
+	Real AMMdot = -rad_c*x1flux(0,k,j,i+1)*(vkep_p*face1(i+1)- vkep_m*face1(i));
 	user_out_var(8,k,j,i) = AMMdot;
 
 	//AMTH
 	Real TH_p = rho_p*vr_p*(vphi_p-vkep_p);
 	Real TH_m = rho_m*vr_m*(vphi_m-vkep_m);
-	Real AMTH = rad_p*TH_p*face1(i) - rad_m*TH_m*face1_m(i-1);
+	Real AMTH = rad_p*TH_p*face1(i+1) - rad_m*TH_m*face1_m(i);
 	//Riemann solver flux? rho*vr*vphi = x1flux(rho*vphi), rho*vr*vk=x1flux(rho*vr)*vk
-	Real AMTH_ = rad_pp*face1_p(i+1)*(x1flux(2,k,j,i+1)-x1flux(0,k,j,i+1)*vkep_pp) - rad_p*face1(i)*(x1flux(2,k,j,i)-x1flux(0,k,j,i)*vkep_p);
+	Real AMTH_ = rad_p*face1_p(i+1)*(x1flux(2,k,j,i+1)-x1flux(0,k,j,i+1)*vkep_p) - rad_m*face1(i)*(x1flux(2,k,j,i)-x1flux(0,k,j,i)*vkep_m);
 	user_out_var(9,k,j,i) = -AMTH;
 	user_out_var(10,k,j,i) = -AMTH_;
 
 	//Torque
 	// fect includes Coriolis force
-	Real Torque = rad_c*pmy_mesh->ruser_mesh_data[3](1,k,j,i)*pcoord->GetCellVolume(k,j,i);
+	Real Torque = rad_c*pmy_mesh->ruser_mesh_data[3](1,k,j,i+1)*pcoord->GetCellVolume(k,j,i+1);
 	// fext has no Coriolis force component
-	Real Torque_ =  rad_c*pmy_mesh->ruser_mesh_data[3](8,k,j,i)*pcoord->GetCellVolume(k,j,i); 
+	Real Torque_ =  rad_c*pmy_mesh->ruser_mesh_data[3](8,k,j,i+1)*pcoord->GetCellVolume(k,j,i+1); 
 	user_out_var(11,k,j,i) = Torque;
 	user_out_var(12,k,j,i) = Torque_;
      
