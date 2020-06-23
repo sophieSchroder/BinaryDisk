@@ -245,9 +245,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   ruser_mesh_data[3].NewAthenaArray(10,blocksizex3, blocksizex2, blocksizex1);
   //check the gravitational potential
   ruser_mesh_data[4].NewAthenaArray(3,blocksizex3, blocksizex2, blocksizex1);
-  ruser_mesh_data[5].NewAthenaArray(7,blocksizex3, blocksizex2, blocksizex1);
+  ruser_mesh_data[5].NewAthenaArray(5,blocksizex3, blocksizex2, blocksizex1);
   //store the time averaged quantities
-  ruser_mesh_data[6].NewAthenaArray(5,blocksizex3, blocksizex2, blocksizex1);
+  ruser_mesh_data[6].NewAthenaArray(8,blocksizex3, blocksizex2, blocksizex1);
   
 
   //ONLY enter ICs loop if this isn't a restart
@@ -666,7 +666,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
 
-  AllocateUserOutputVariables(28); //store two point mass function
+  AllocateUserOutputVariables(31); //store two point mass function
   return;
 }
 
@@ -772,7 +772,11 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	//grid related values
 	user_out_var(26,k,j,i) = pcoord->dx2f(j); //dphi 
 	user_out_var(27,k,j,i) = pcoord->GetCellVolume(k,j,i); //vol
-	
+
+	//time integration of radial profile
+	user_out_var(28,k,j,i) = pmy_mesh->ruser_mesh_data[6](5,k,j,i); //TR = <sigma*vr*dvphi*dphi>
+	user_out_var(29,k,j,i) = pmy_mesh->ruser_mesh_data[6](6,k,j,i); // <RcrossFext*dphi>
+	user_out_var(30,k,j,i) = pmy_mesh->ruser_mesh_data[6](7,k,j,i); // <RcrossFext*dphi>
      
       }
 
@@ -935,8 +939,8 @@ void Mesh::UserWorkInLoop(){
 
 	//cell center variables
 	Real rho_c = phydro->u(IDN,k,j,i);
-	Real vphi_c = phydro->w(IM2,k,j,i);
-	Real vr_c = phydro->w(IM1,k,j,i);
+	Real vphi_c = phydro->w(IVY,k,j,i);
+	Real vr_c = phydro->w(IVX,k,j,i);
 
 
 	//int AMModt
@@ -961,12 +965,14 @@ void Mesh::UserWorkInLoop(){
 	//Time integrated radial profiles
 	//Mdot = int(sigma*vr*rad)
 	Real sigma_c= rho_c*pcoord->GetCellVolume(k,j,i)/pcoord->GetFace3Area(k,j,i);
-	Real mdot = ruser_mesh_data[6](0,k,j,i) += sigma_c*rad_c*vr_c*pcoord->dx2f(j); 
+	Real mdot = ruser_mesh_data[6](0,k,j,i) = sigma_c*rad_c*vr_c*pcoord->dx2f(j); 
 	ruser_mesh_data[6](0,k,j,i) += mdot*dt;
 	
 	//alpha_eff = Mdot/(3pi*sigma*H*cs)
+	Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
+	Real vphi_local = vphi_c + Omega_orb*rad_c;
 	Real cs2_c = pmb->peos->GetGamma()*phydro->w(IPR,k,j,i)/phydro->w(IDN,k,j,i);
-	Real omega_local = vphi_c/rad_c;
+	Real omega_local = vphi_c/rad_c + Omega_orb;
 	Real press_avg = pcoord->dx2f(j)*3*PI*sigma_c*cs2_c/omega_local;
 	ruser_mesh_data[6](1,k,j,i) += dt*mdot/press_avg;
 	ruser_mesh_data[6](2,k,j,i) += dt*press_avg;
@@ -975,7 +981,13 @@ void Mesh::UserWorkInLoop(){
 	ruser_mesh_data[6](3,k,j,i) += dt*sigma_c*pcoord->dx2f(j);
 	
 	//am
-	ruser_mesh_data[6](4,k,j,i) += dt*sigma_c*rad_c*vphi_c*pcoord->dx2f(j);
+	ruser_mesh_data[6](4,k,j,i) += dt*sigma_c*rad_c*vphi_local*pcoord->dx2f(j);
+
+	//the first term of mdot
+	ruser_mesh_data[6](5,k,j,i) += dt*sigma_c*vr_c*(vphi_local-vkep_c)*pcoord->dx2f(j); //Tr = <sigma*deltavphi>
+	//the torque term of mdot
+	ruser_mesh_data[6](6,k,j,i) += dt*rad_c*ruser_mesh_data[3](1,k,j,i)*pcoord->dx2f(j); //includes Coriolis
+	ruser_mesh_data[6](7,k,j,i) += dt*rad_c*ruser_mesh_data[3](8,k,j,i)*pcoord->dx2f(j); //net fext
 
       }
     }
