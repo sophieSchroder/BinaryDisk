@@ -965,7 +965,7 @@ void Mesh::UserWorkInLoop(){
 	//Time integrated radial profiles
 	//Mdot = int(sigma*vr*rad)
 	Real sigma_c= rho_c*pcoord->GetCellVolume(k,j,i)/pcoord->GetFace3Area(k,j,i);
-	Real mdot = ruser_mesh_data[6](0,k,j,i) = sigma_c*rad_c*vr_c*pcoord->dx2f(j); 
+	Real mdot  = sigma_c*rad_c*vr_c*pcoord->dx2f(j); 
 	ruser_mesh_data[6](0,k,j,i) += mdot*dt;
 	
 	//alpha_eff = Mdot/(3pi*sigma*H*cs)
