@@ -666,7 +666,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
 
-  AllocateUserOutputVariables(31); //store two point mass function
+  AllocateUserOutputVariables(32); //store two point mass function
   return;
 }
 
@@ -777,6 +777,9 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	user_out_var(28,k,j,i) = pmy_mesh->ruser_mesh_data[6](5,k,j,i); //TR = <sigma*vr*dvphi*dphi>
 	user_out_var(29,k,j,i) = pmy_mesh->ruser_mesh_data[6](6,k,j,i); // <RcrossFext*dphi>
 	user_out_var(30,k,j,i) = pmy_mesh->ruser_mesh_data[6](7,k,j,i); // <RcrossFext*dphi>
+
+	//mdot
+	user_out_var(31,k,j,i) = pcoord->GetFace1Area(k,j,i+1)*x1flux(IDN,k,j,i+1); //check m dot at outer boundary
      
       }
 
@@ -1523,7 +1526,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
       Real phi_coord = pco->x2v(j);
       for (int i=1; i<=(NGHOST); ++i) {//R
 
-	if (fabs(phi_coord)<=0.1){// if within L1 point
+	if (phi_coord<=0.1 || (2*PI-phi_coord<=0.1)){// if within L1 point
 
 	  prim(IDN,k,j,ie+i) = local_dens;
 	  prim(IVX,k,j,ie+i) = local_vr;
