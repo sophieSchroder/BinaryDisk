@@ -247,7 +247,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   ruser_mesh_data[4].NewAthenaArray(3,blocksizex3, blocksizex2, blocksizex1);
   ruser_mesh_data[5].NewAthenaArray(5,blocksizex3, blocksizex2, blocksizex1);
   //store the time averaged quantities
-  ruser_mesh_data[6].NewAthenaArray(8,blocksizex3, blocksizex2, blocksizex1);
+  ruser_mesh_data[6].NewAthenaArray(10,blocksizex3, blocksizex2, blocksizex1);
   
 
   //ONLY enter ICs loop if this isn't a restart
@@ -666,7 +666,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
 
-  AllocateUserOutputVariables(32); //store two point mass function
+  AllocateUserOutputVariables(34); //store two point mass function
   return;
 }
 
@@ -780,6 +780,11 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 
 	//mdot
 	user_out_var(31,k,j,i) = pcoord->GetFace1Area(k,j,i+1)*x1flux(IDN,k,j,i+1); //check m dot at outer boundary
+	
+	//pressure
+	user_out_var(32,k,j,i) = pmy_mesh->ruser_mesh_data[6](8,k,j,i);
+	//mach number
+	user_out_var(33,k,j,i) = pmy_mesh->ruser_mesh_data[6](9,k,j,i);
      
       }
 
@@ -937,7 +942,7 @@ void Mesh::UserWorkInLoop(){
       //face i-1/2
       Real rad_m = pcoord->x1f(i);
       Real vkep_m = sqrt(GM1/rad_m);
-
+ 
       for(int j=js; j<=je; j++){
 
 	//cell center variables
@@ -974,6 +979,7 @@ void Mesh::UserWorkInLoop(){
 	//alpha_eff = Mdot/(3pi*sigma*H*cs)
 	Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
 	Real vphi_local = vphi_c + Omega_orb*rad_c;
+	Real vtot = sqrt(vphi_local*vphi_local+vr_c*vr_c);
 	Real cs2_c = pmb->peos->GetGamma()*phydro->w(IPR,k,j,i)/phydro->w(IDN,k,j,i);
 	Real omega_local = vphi_c/rad_c + Omega_orb;
 	Real press_avg = pcoord->dx2f(j)*3*PI*sigma_c*cs2_c/omega_local;
@@ -986,13 +992,18 @@ void Mesh::UserWorkInLoop(){
 	//am
 	ruser_mesh_data[6](4,k,j,i) += dt*sigma_c*rad_c*vphi_local*pcoord->dx2f(j);
 
-	//the first term of mdot
+	//the Reynold stress term of mdot
 	ruser_mesh_data[6](5,k,j,i) += dt*sigma_c*vr_c*(vphi_local-vkep_c)*pcoord->dx2f(j); //Tr = <sigma*deltavphi>
 	//the torque term of mdot
 	ruser_mesh_data[6](6,k,j,i) += dt*rad_c*ruser_mesh_data[3](1,k,j,i)*pcoord->dx2f(j); //includes Coriolis
 	ruser_mesh_data[6](7,k,j,i) += dt*rad_c*ruser_mesh_data[3](8,k,j,i)*pcoord->dx2f(j); //net fext
+	//the pressure term of mdot
+	ruser_mesh_data[6](8,k,j,i) += dt*phydro->w(IPR,k,j,i)*pcoord->dx2f(j);
+	//the mach number
+	ruser_mesh_data[6](9,k,j,i) += dt*(vtot/sqrt(cs2_c))*pcoord->dx2f(j);
 
-      }
+      }//end phi    
+
     }
   }
   
