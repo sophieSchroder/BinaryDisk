@@ -15,12 +15,12 @@ from matplotlib import rc
 rc('text',usetex=True)
 rc('font',family='serif',size=12)
 
+GM1 = 0.7692307692307692 
 
 #creat movie writter
-FFwriter = animation.FFMpegWriter(fps=12, extra_args=['-vcodec','libx264','-pix_fmt','yuv420p'])
 
 #reading the hdf5 data dumps
-frame = athdf("../../../cyltest/thindisk.out1.00800.athdf")
+frame = athdf("BDstream.out2.00150.athdf")
 
 #the range in R direction we want to plot
 rmin = 0
@@ -29,11 +29,8 @@ rmax = 384
 #creat np.meshgrid from the coordinate
 #['x1f'] is the face-centered R direction coordinates, ['x2f'] is the face-centered Phi direction coordinates. 
 r,phi = np.meshgrid(frame['x1f'][rmin:rmax], frame['x2f'])
-#X = r*np.sin(phi)
-#Y = r*np.cos(phi)
-
-X = np.log10(r)
-Y = phi-np.pi
+X = r*np.sin(phi)
+Y = r*np.cos(phi)
 
 #Plotting
 fig = plt.figure(figsize=(7.5,7.5))
@@ -41,7 +38,9 @@ spec = gridspec.GridSpec(ncols=30,nrows=1)
 ax0 = fig.add_subplot(spec[0,:-1])
 cbar = fig.add_subplot(spec[0,-1])
 
-im = ax0.pcolormesh(X,Y,frame['rho'][0,:,rmin:rmax],norm=colors.LogNorm(vmin=0.01, vmax=10**0.49), cmap='gist_heat') 
+rho = frame['rho'][0,:,rmin:rmax]
+
+im = ax0.pcolormesh(Y,X,rho) 
 ax0.set_aspect(1.0)
 ax0.set_title("time="+str(frame['Time']))
 #ax0.set_xlabel(r"$r\sin\phi$")
@@ -55,6 +54,6 @@ ax0.set_ylim(np.min(Y), np.max(Y))
 fig.colorbar(im,cax=cbar)
 cbar.set_ylabel(r"$\rm Log\Sigma$")
     
-plt.savefig('spiral.pdf')
+#plt.savefig('spiral.pdf')
 
 plt.show()
