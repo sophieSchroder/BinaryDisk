@@ -279,6 +279,9 @@ def main(**kwargs):
 
     # Report cell width
     print('\nLimiting width: {0:.3e}'.format(width_min))
+    print('\nr min width: {0:.3e}'.format(w_r_min))
+    print('\ntheta min width: {0:.3e}'.format(w_theta_min))
+    print('\nphi min width: {0:.3e}'.format(w_phi_min))
     if minimum_width is None and width_min != w_phi_min:
         print('Note: phi-width not smallest width of this cell')
 
