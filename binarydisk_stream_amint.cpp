@@ -245,9 +245,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   ruser_mesh_data[3].NewAthenaArray(10,blocksizex3, blocksizex2, blocksizex1);
   //check the gravitational potential
   ruser_mesh_data[4].NewAthenaArray(3,blocksizex3, blocksizex2, blocksizex1);
-  ruser_mesh_data[5].NewAthenaArray(5,blocksizex3, blocksizex2, blocksizex1);
+  ruser_mesh_data[5].NewAthenaArray(6,blocksizex3, blocksizex2, blocksizex1);
   //store the time averaged quantities
-  ruser_mesh_data[6].NewAthenaArray(10,blocksizex3, blocksizex2, blocksizex1);
+  ruser_mesh_data[6].NewAthenaArray(11,blocksizex3, blocksizex2, blocksizex1);
   
 
   //ONLY enter ICs loop if this isn't a restart
@@ -666,7 +666,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
 
-  AllocateUserOutputVariables(34); //store two point mass function
+  AllocateUserOutputVariables(38); //store two point mass function
   return;
 }
 
@@ -721,13 +721,19 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	Real vphi_c = phydro->w(IM2,k,j,i);
 	Real vr_c = phydro->w(IM1,k,j,i);
 
+	//changing to non-corotating frames
+	Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
+	Real v_rotate_c = Omega_orb*rad_c;
+	Real v_rotate_p = Omega_orb*rad_p;
+	Real v_rotate_m = Omega_orb*rad_m;
 
-	//pcoord->Face1Area(k , j, is-(NGHOST), ie+(NGHOST), face1);
 
 	//dAMdt, only show AM = rho*R*(v-vkep)
 	user_out_var(6,k,j,i) = rho_c*rad_c*(vphi_c-vkep_c)*pcoord->GetCellVolume(k,j,i);
 	//dAMdt, no vkep 
 	user_out_var(11,k,j,i) = rho_c*rad_c*(vphi_c)*pcoord->GetCellVolume(k,j,i);
+	//dAMdt, non-corotating
+	user_out_var(34,k,j,i) = rho_c*rad_c*(vphi_c-vkep_c+v_rotate_c)*pcoord->GetCellVolume(k,j,i);
 
 	//AM Mdot
 	Real AMMdot = -rad_c*x1flux(IDN,k,j,i)*(vkep_p*pcoord->GetFace1Area(k,j,i+1)- vkep_m*pcoord->GetFace1Area(k,j,i));
@@ -740,6 +746,10 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	//AMTH, no vkep 
 	Real AMTH_net = rad_p*pcoord->GetFace1Area(k,j,i+1)*x1flux(IM2,k,j,i+1) - rad_m*pcoord->GetFace1Area(k,j,i)*x1flux(IM2,k,j,i);
 	user_out_var(12,k,j,i) = -AMTH_net;
+	//AMTH, in the non-corotating frame, adding omega*r
+
+	Real AMTH_noncorotate = rad_p*pcoord->GetFace1Area(k,j,i+1)*(x1flux(IM2,k,j,i+1)-x1flux(IDN,k,j,i+1)*vkep_p + x1flux(IDN,k,j,i+1)*v_rotate_p) - rad_m*pcoord->GetFace1Area(k,j,i)*(x1flux(IM2,k,j,i)-x1flux(IDN,k,j,i)*vkep_m +x1flux(IDN,k,j,i)*v_rotate_m);
+	user_out_var(35,k,j,i) = AMTH_noncorotate;
 
 	//Torque
 	// fect includes Coriolis force
@@ -759,13 +769,16 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	user_out_var(16,k,j,i) = pmy_mesh->ruser_mesh_data[5](0,k,j,i); //AMMdot
 	user_out_var(17,k,j,i) = pmy_mesh->ruser_mesh_data[5](1,k,j,i); //AMTH
 	user_out_var(18,k,j,i) = pmy_mesh->ruser_mesh_data[5](2,k,j,i); //AMTH_net
+	user_out_var(37,k,j,i) = pmy_mesh->ruser_mesh_data[5](5,k,j,i); //AMTH non coratating
 	user_out_var(19,k,j,i) = pmy_mesh->ruser_mesh_data[5](3,k,j,i); //torque
 	user_out_var(20,k,j,i) = pmy_mesh->ruser_mesh_data[5](4,k,j,i); //net torque (no Coriolis)
+
 
 	//store the time integrated quantities for radial profile
 	user_out_var(21,k,j,i) = pmy_mesh->ruser_mesh_data[6](0,k,j,i); //Mdot
 	user_out_var(22,k,j,i) = pmy_mesh->ruser_mesh_data[6](1,k,j,i); //alpha_eff
 	user_out_var(23,k,j,i) = pmy_mesh->ruser_mesh_data[6](2,k,j,i); //3*PI*sigma*cs*H
+	user_out_var(36,k,j,i) = pmy_mesh->ruser_mesh_data[6](10,k,j,i); //3*PI*sigma*cs*H, with omega=omega_kep
 	user_out_var(24,k,j,i) = pmy_mesh->ruser_mesh_data[6](3,k,j,i); //surface density
 	user_out_var(25,k,j,i) = pmy_mesh->ruser_mesh_data[6](4,k,j,i); //AM
 
@@ -950,6 +963,11 @@ void Mesh::UserWorkInLoop(){
 	Real vphi_c = phydro->w(IVY,k,j,i);
 	Real vr_c = phydro->w(IVX,k,j,i);
 
+	//changing to non-corotating frames
+	Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
+	Real v_rotate_c = Omega_orb*rad_c;
+	Real v_rotate_p = Omega_orb*rad_p;
+	Real v_rotate_m = Omega_orb*rad_m;
 
 	//int AMModt
 	Real AMMdot = -rad_c*x1flux(IDN,k,j,i)*(vkep_p*pcoord->GetFace1Area(k,j,i+1)- vkep_m*pcoord->GetFace1Area(k,j,i));
@@ -961,6 +979,9 @@ void Mesh::UserWorkInLoop(){
 	//AMTH, no vkep 
 	Real AMTH_net = rad_p*pcoord->GetFace1Area(k,j,i+1)*x1flux(IM2,k,j,i+1) - rad_m*pcoord->GetFace1Area(k,j,i)*x1flux(IM2,k,j,i);
         ruser_mesh_data[5](2,k,j,i) += -AMTH_net*dt;
+
+	Real AMTH_noncorotate = rad_p*pcoord->GetFace1Area(k,j,i+1)*(x1flux(IM2,k,j,i+1)-x1flux(IDN,k,j,i+1)*vkep_p + x1flux(IDN,k,j,i+1)*v_rotate_p) - rad_m*pcoord->GetFace1Area(k,j,i)*(x1flux(IM2,k,j,i)-x1flux(IDN,k,j,i)*vkep_m +x1flux(IDN,k,j,i)*v_rotate_m);
+	ruser_mesh_data[5](5,k,j,i) += -AMTH_noncorotate*dt;
 
 	//Torque
 	// fect includes Coriolis force
@@ -977,14 +998,18 @@ void Mesh::UserWorkInLoop(){
 	ruser_mesh_data[6](0,k,j,i) += mdot*dt;
 	
 	//alpha_eff = Mdot/(3pi*sigma*H*cs)
-	Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
+	//Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
 	Real vphi_local = vphi_c + Omega_orb*rad_c;
 	Real vtot = sqrt(vphi_local*vphi_local+vr_c*vr_c);
 	Real cs2_c = pmb->peos->GetGamma()*phydro->w(IPR,k,j,i)/phydro->w(IDN,k,j,i);
 	Real omega_local = vphi_c/rad_c + Omega_orb;
 	Real press_avg = pcoord->dx2f(j)*3*PI*sigma_c*cs2_c/omega_local;
+	Real omega_kep_c = sqrt(GM1/pow(rad_c,3));
+	Real press_avg_ = pcoord->dx2f(j)*3*PI*sigma_c*cs2_c/omega_kep_c;
+	
 	ruser_mesh_data[6](1,k,j,i) += dt*mdot/press_avg;
 	ruser_mesh_data[6](2,k,j,i) += dt*press_avg;
+	ruser_mesh_data[6](10,k,j,i) += dt*press_avg_;
 
 	//surface density
 	ruser_mesh_data[6](3,k,j,i) += dt*sigma_c*pcoord->dx2f(j);
