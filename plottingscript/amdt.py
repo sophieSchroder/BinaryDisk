@@ -15,6 +15,16 @@ from matplotlib import rc
 rc('text',usetex=True)
 rc('font',family='serif',size=12)
 
+##################
+#XS: there are three frames: 
+#frame1. the frame in which both objects are rotating around the center of mass. 
+#frame2. the frame in which the primary is fixed, the secondary moves around primary, f_ext only has gravity terms
+#frame3. the frame in which both objects are fixed, f_ext also includes inertial forces
+#We call frame2 "non-rotating" frame, frame3 "co-rotating frame"
+#This script plots AM budget in both frames.
+#################
+
+#read in initial conditions
 GM1 = 0.7692307692307692 
 GM2 = 0.2307692307692307
 PI = 6.283185307179586/2
@@ -22,138 +32,116 @@ Omega = 1.0
 
 #the range in R direction we want to plot, it's the cell number, not physical distance, change them as you want
 rmin = 0
-rmax = 128
+rmax = 192*2
 thmin = 0
-thmax = 256
-
-
-#read in pmtrack
-#secondarytrack = pd.read_csv("pm_trackfile.dat",delim_whitespace=True) 
+thmax = 352*2
 
 #Plotting
-fig = plt.figure(figsize=(10,7.5))
-spec = gridspec.GridSpec(ncols=1,nrows=1)
-ax0 = fig.add_subplot(spec[:])
+fig = plt.figure(figsize=(20,7.5))
+spec = gridspec.GridSpec(ncols=2,nrows=1)
+ax0 = fig.add_subplot(spec[0,0])
+ax1 = fig.add_subplot(spec[0,1])
 
 
+#reading angular momentum
 def readam(i):
     #change file names here accordingly
     if i < 10:
         name = 'BDstream.out1.0000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
     elif i >=100:
         name = 'BDstream.out1.00'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
     else:
         name = 'BDstream.out1.000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
 
     frame = athdf(name)
+    frame2 = athdf(name2)
     time = frame['Time']
     
     Radius = frame['x1v']
+    dR = np.gradient(Radius)
     AM = np.array([])
+    AM_net = np.array([])
+    AM_nc = np.array([])
 
     for radius in range(rmin,rmax):
+        #cell volume
+        vol = np.sum(frame2['user_out_var27'][0,:,radius])
+        #angular momentum in 
+        am = np.sum(frame2['user_out_var6'][0,:,radius])
+        AM = np.append(AM, am)
+        am_net = np.sum(frame2['user_out_var11'][0,:,radius]) 
+        AM_net = np.append(AM_net, am_net)
+        am_nc = np.sum(frame2['user_out_var34'][0,:,radius])
+        AM_nc = np.append(AM_nc, am_nc)
         
-        rad = frame['x1v'][radius]
-        rho = frame['rho'][0,:,radius]
-        v_kep = np.sqrt(GM1/rad)
-        deltav = frame['vel2'][0,:,radius]-v_kep +Omega*rad # or not adding Omega*rad?
-        am = rho*rad*deltav
-        am_az = np.average(am)*rad
-        
-        AM = np.append(AM, am_az)
-        
-    return [Radius,AM,time]
+    return [Radius, AM, time, AM_net, AM_nc]
 
-
-def damdt(index): #backward gradient
-    
-    data_now = readam(index)
-    data_before = readam(index-1)
-    
-    rad_now = data_now[0]
-    rad_before = data_before[0]
-
-    AM_now = data_now[1]
-    AM_before = data_before[1]
-
-    t_now = data_now[2]
-    t_before = data_before[2]
-
-    dAM = AM_now - AM_before
-    dt = t_now - t_before
-    dAMdt = dAM/dt
-    
-
-    return [rad_now, dAMdt]
-
-
-def ammdot(i):
+def intammdot(i):
     #change file names here accordingly
     if i < 10:
         name = 'BDstream.out1.0000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
     elif i >=100:
         name = 'BDstream.out1.00'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
     else:
         name = 'BDstream.out1.000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
 
     frame = athdf(name)
+    frame2 = athdf(name2)
+
     time = frame['Time']
     
     Radius = frame['x1v']
+    dR = np.gradient(Radius)
     AMMdot = np.array([])
 
-    rvk =  np.sqrt(GM1*frame['x1v'])
-    drvkdr = np.gradient(rvk)/np.gradient(Radius)
 
     for radius in range(rmin,rmax):
-        
-        rad = frame['x1v'][radius]
-        rho = frame['rho'][0,:,radius]
-        v_kep = np.sqrt(GM1/rad)
-        deltav = frame['vel2'][0,:,radius]-v_kep +Omega*rad
-        vr = frame['vel1'][0,:,radius]
-        
-        mdot_arr = -rho*rad*vr
-        mdot = np.average(mdot_arr)
-
+        vol = np.sum(frame2['user_out_var27'][0,:,radius])
+        mdot = np.sum(frame2['user_out_var16'][0,:,radius]) #/vol
         AMMdot = np.append(AMMdot, mdot)
-
-    AMMdot *= drvkdr
         
     return [Radius,AMMdot]
 
 
-
-def amfh(i):
+def intamfh(i):
     #change file names here accordingly
     if i < 10:
         name = 'BDstream.out1.0000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
     elif i >=100:
         name = 'BDstream.out1.00'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
     else:
         name = 'BDstream.out1.000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
 
     frame = athdf(name)
+    frame2 = athdf(name2)
     time = frame['Time']
     
     Radius = frame['x1v']
+    dR = np.gradient(Radius)
     amfh = np.array([])
+    amth_net = np.array([])
+    amth_nc = np.array([])
     
     for radius in range(rmin,rmax):
-        rad = frame['x1v'][radius]
-        rho = frame['rho'][0,:,radius]
-        v_kep = np.sqrt(GM1/rad)
-        deltav = frame['vel2'][0,:,radius]-v_kep + Omega*rad
-        vr = frame['vel1'][0,:,radius]        
+        vol = np.sum(frame2['user_out_var27'][0,:,radius])
+        TH = np.sum(frame2['user_out_var17'][0,:,radius]) 
+        amfh = np.append(amfh, TH)
+        TH_net = np.sum(frame2['user_out_var18'][0,:,radius]) 
+        amth_net = np.append(amth_net, TH_net)
+        TH_diff = np.sum(frame2['user_out_var10'][0,:,radius]) - np.sum(frame2['user_out_var9'][0,:,radius])
+        TH_nr = np.sum(frame2['user_out_var37'][0,:,radius])
+        amth_nc = np.append(amth_nc, TH_nr)
 
-        FH = rho*vr*deltav
-        FH = np.average(FH)
-        
-        amfh = np.append(amfh, FH*rad*rad)
-
-    AMFH = -np.gradient(amfh)/np.gradient(Radius)
-                           
-    return [Radius, AMFH]
+    return [Radius, amfh, amth_net, amth_nc]
 
     
 def torque(i):
@@ -174,107 +162,120 @@ def torque(i):
     time = frame['Time']
     
     Radius = frame['x1v']
-    amfh = np.array([])
-
+    dR = np.gradient(Radius)
     trr = np.array([])
     trr2 = np.array([])
 
-    #pmtrack_index = i-1
-    #x2 = secondarytrack.x[pmtrack_index]
-    #y2 = secondarytrack.y[pmtrack_index]
-    #z2 = secondarytrack.z[pmtrack_index]
     
     for radius in range(rmin,rmax):
-        fext = frame2['user_out_var7'][0,:,radius]
-        tr = Radius[radius]*fext
-        torque = np.average(tr)
+        vol = np.sum(frame['user_out_var27'][0,:,radius])
+        torque = np.sum(frame2['user_out_var9'][0,:,radius]) #/vol
         trr = np.append(trr, torque)
-        '''
-        torq_arr = np.array([])
+        torque_ = np.sum(frame2['user_out_var10'][0,:,radius]) #/vol
+        trr2 = np.append(trr2, torque_)
         
-        for th in range(thmin, thmax):
+    return [Radius, trr,  trr2]
+
+
+def inttorque(i):
+    #change file names here accordingly
+    if i < 10:
+        name = 'BDstream.out1.0000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
+    elif i >=100:
+        name = 'BDstream.out1.00'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
+    else:
+        name = 'BDstream.out1.000'+str(i)+'.athdf'
+        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+
+    frame = athdf(name)
+    frame2 = athdf(name2)
+
+    time = frame['Time']
+    
+    Radius = frame['x1v']
+    dR = np.gradient(Radius)
+    trr = np.array([])
+    trr2 = np.array([])
+    
+    for radius in range(rmin,rmax):
+        vol = np.sum(frame2['user_out_var27'][0,:,radius])
+        torque = np.sum(frame2['user_out_var19'][0,:,radius]) #/vol
+        trr = np.append(trr, torque)
+        torque_ = np.sum(frame2['user_out_var20'][0,:,radius]) #/vol
+        trr2 = np.append(trr2, torque_)
         
-            rad = Radius[radius]
-            theta = frame['x2v'][th]
-            #z_cyl = frame['x3v'][radius]
+    return [Radius, trr,  trr2]
 
-            x = rad*np.cos(theta)
-            y = rad*np.sin(theta)
-            #z = z_cyl
+def plotam_nonrotate(start, end, ax0):
 
-            r1 = np.sqrt(x*x+y*y) #+z*z)
-            r12 = np.sqrt((x2-x)*(x2-x)+(y2-y)*(y2-y))
-            f_m2_x = (x2-x)*GM2*frame['rho'][0,th,radius]/pow(r12,3)
-            f_m2_y = (y2-y)*GM2*frame['rho'][0,th,radius]/pow(r12,3)
-            torq = x*f_m2_y - y*f_m2_x
+    rad_avg = readam(end)[0]
+    dAM = readam(end)[4]-readam(start)[4]
+    AMMdot = intammdot(end)[1] - intammdot(start)[1]
+    AMTH_r = intamfh(end)[1] - intamfh(start)[1]
+    AMTH_nr = intamfh(end)[3] - intamfh(start)[3]
+    TR_nr = inttorque(end)[2] - inttorque(start)[2]
+    TR_r  = inttorque(end)[1] - inttorque(start)[1]
+    TRdiff = TR_r - TR_nr
+    dtime = readam(end)[2]-readam(start)[2]
 
-            torq_arr = np.append(torq_arr, torq)
-        
-        trr2 = np.append(trr2, np.average(torq_arr))
-        '''
-    Tr = trr*Radius
-    #Tr2 = trr2*Radius
-    return [Radius, Tr]#,  Tr2]
+    dAM /= dtime
+    AMMdot /= dtime
+    AMTH_r /= dtime
+    AMTH_nr /= dtime
+    TR_r /= dtime
+    TR_nr /= dtime
+    TRdiff /= dtime
 
-
-dAMdt = damdt(154)
-AM_Mdot = ammdot(154)
-AM_FH = amfh(154)
-Tr = torque(154)
-
-'''
-ax0.plot(dAMdt[0], dAMdt[1], label=r"$AM_{t}(R)$")
-ax0.plot(AM_Mdot[0], AM_Mdot[1], label=r"$AM_{\dot{M}}(R)$")
-ax0.plot(AM_FH[0], AM_FH[1], label=r"$AM_{FH}(R)$")
-ax0.plot(Tr[0], Tr[1], label=r"$T(R)$")
-#ax0.plot(Tr[0], Tr[2], label="calculated T(R)")
-ax0.plot(AM_Mdot[0], AM_Mdot[1]+AM_FH[1]+Tr[1], ls='--', label=r"$AM_{\dot{M}}(R)+AM_{FH}(R)+T(R)$")
-#print(np.shape(AM_Mdot[0]), np.shape(AM_FH[0]), np.shape(Tr[0]))
-
-ax0.set_xlim(np.min(Tr[0]), np.max(Tr[0]))
-ax0.set_xlabel(r"R")
-'''
-
-rad_avg = np.zeros_like(damdt(155)[0]) #np.array([])
-dAMdt_avg = np.zeros_like(damdt(155)[1])
-AM_Mdot_avg = np.zeros_like(damdt(155)[1])
-AM_FH_avg = np.zeros_like(damdt(155)[1])
-Tr_avg = np.zeros_like(damdt(155)[1])
-
-count = 0
-for i in range(390,400):
-    count += 1
-    rad_avg += damdt(i)[0]
-    dAMdt_avg += damdt(i)[1]
-    AM_Mdot_avg += ammdot(i)[1]
-    AM_FH_avg += amfh(i)[1]
-    Tr_avg += torque(i)[1]
-
-    #rad_avg = np.append(rad_avg, dAMdt[0])
-    #dAMdt_avg = np.append(dAMdt_avg, dAMdt[1])
-    #AM_Mdot_avg = np.append(AM_Mdot_avg, AM_Mdot[1])
-    #AM_FH_avg = np.append(AM_Mdot_avg, AM_FH[1])
-    #Tr_avg = np.apppend(Tr_avg, Tr[1])
-
-    #radius_average = 
-
-rad_avg /= count 
-dAMdt_avg /= count
-AM_Mdot_avg /= count
-AM_FH_avg /= count
-Tr_avg /= count
-
-ax0.plot(rad_avg, dAMdt_avg, label=r"$AM_{t}(R)$", lw=1.0)
-ax0.plot(rad_avg, AM_Mdot_avg, lw=1.0, label=r"$AM_{\dot{M}}(R)$")
-#ax0.plot(rad_avg, AM_FH_avg, lw=1.0, label=r"$AM_{FH}(R)$")
-ax0.plot(rad_avg, Tr_avg, lw=1.0, label=r"$T(R)$")
-#ax0.plot(rad_avg, AM_Mdot_avg+AM_FH_avg+Tr_avg, ls='--', lw=1.0)
+    ax0.plot(rad_avg, dAM, label=r"$AM_{t}(R)$", lw=2.0, c='k')
+    ax0.plot(rad_avg, AMMdot, lw=2.0, label=r"$AM_{\dot{M}}(R)$", c='y', ls='-.')
+    ax0.plot(rad_avg, AMTH_nr, lw=2.0, label=r"$AM_{TH}(R)$", c='deepskyblue')
+    ax0.plot(rad_avg, AMTH_r+TRdiff, lw=2.0, label=r"$AM_{TH}(R)$", c='deepskyblue', ls=':')
+    ax0.plot(rad_avg, TR_nr, lw=2.0, label=r"$T(R)$", ls='--', c='blue')
+    ax0.plot(rad_avg, -(AMTH_nr+TR_nr), lw=2.0, ls=':', label=r'dissipation', c='k')
+    ax0.plot(rad_avg, (AMMdot+AMTH_nr+TR_nr), ls='--', lw=2.0, c='r', label=r"$AM_{\dot{M}}(R)+AM_{FH}(R)+T(R)$")
+    ax0.plot(rad_avg, (AMMdot+AMTH_r+TRdiff+TR_nr), ls='-.', lw=2.0, c='r', label=r"$AM_{\dot{M}}(R)+AM_{FH}(R)+T(R)$"+r"~nonrotate")
 
 
-ax0.set_xlim(np.min(Tr[0]), np.max(Tr[0]))
-ax0.set_xlabel(r"R")
+    ax0.set_xlim(np.min(rad_avg), np.max(rad_avg))
+    ax0.set_xlabel(r"R")
+    ax0.set_ylim(-1.5e-5, 1.5e-5)
+    ax0.legend(loc='best', frameon=False)
+    ax0.set_title("non-rotating frame")
 
 
-plt.legend()
-plt.show()
-#plt.savefig("AMdt.png")
+def plotam_rotate(start, end, ax0):
+
+    rad_avg = readam(end)[0]
+    dAM = readam(end)[1]-readam(start)[1]
+    AMMdot = intammdot(end)[1] - intammdot(start)[1]
+    AMTH = intamfh(end)[1] - intamfh(start)[1]
+    TR = inttorque(end)[1] - inttorque(start)[1]
+    dtime = readam(end)[2]-readam(start)[2]
+
+    dAM /= dtime
+    AMMdot /= dtime
+    AMTH /= dtime
+    TR /= dtime
+
+    ax0.plot(rad_avg, dAM, label=r"$AM_{t}(R)$", lw=2.0, c='k')
+    ax0.plot(rad_avg, AMMdot, lw=2.0, label=r"$AM_{\dot{M}}(R)$", c='y', ls='-.')
+    ax0.plot(rad_avg, AMTH, lw=2.0, label=r"$AM_{TH}(R)$", c='deepskyblue')
+    ax0.plot(rad_avg, TR, lw=2.0, label=r"$T(R)$", ls='--', c='blue')
+    ax0.plot(rad_avg, -(AMTH+TR), lw=2.0, ls=':', label=r'dissipation', c='k')
+    ax0.plot(rad_avg, (AMMdot+AMTH+TR), ls='--', lw=2.0, c='r', label=r"$AM_{\dot{M}}(R)+AM_{FH}(R)+T(R)$")
+
+
+    ax0.set_xlim(np.min(rad_avg), np.max(rad_avg))
+    ax0.set_xlabel(r"R")
+    ax0.set_ylim(-1.5e-5, 1.5e-5)
+    ax0.legend(loc='best', frameon=False)
+    ax0.set_title("co-rotating frame")
+
+
+plotam_nonrotate(100,150,ax0)
+plotam_rotate(100,150,ax1)
+
+plt.savefig("AMdt.png")
+

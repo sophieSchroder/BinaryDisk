@@ -19,70 +19,17 @@ GM1 = 0.7692307692307692
 GM2 = 0.2307692307692307
 PI = 6.283185307179586/2
 Omega = 1.0
-gamma_gas = 1.1
-
 
 #the range in R direction we want to plot, it's the cell number, not physical distance, change them as you want
 rmin = 0
-rmax = 192
+rmax = 192*2
 thmin = 0
-thmax = 352
-
-#load a frame that has volume
-volframe = athdf('vol.athdf')
+thmax = 352*2
 
 #read in pmtrack
 #secondarytrack = pd.read_csv("pm_trackfile.dat",delim_whitespace=True) 
 
-#Plotting
-fig = plt.figure(figsize=(18,10.0))
-spec = gridspec.GridSpec(ncols=2,nrows=2)
-ax0 = fig.add_subplot(spec[0,0])
-ax1 = fig.add_subplot(spec[0,1])
-ax2 = fig.add_subplot(spec[1,0])
-ax3 = fig.add_subplot(spec[1,1])
-
-
-def deltavphi(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
-
-    frame = athdf(name)
-    frame2 = athdf(name2)
-    time = frame['Time']
-    
-    Radius = frame['x1v']
-    deltavphi = np.array([])
-    
-    for radius in range(rmin,rmax):
-        rad = frame['x1v'][radius]
-        rho = frame['rho'][0,:,radius]
-        v_kep = np.sqrt(GM1/rad)
-        deltav = frame['vel2'][0,:,radius]-v_kep + Omega*rad
-        deltavphi = np.append(deltavphi, np.sum(deltav))
-
-                           
-    return [Radius, deltavphi]
-
-def density_avg(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+def density_avg(name, name2):
 
     frame = athdf(name)
     frame2 = athdf(name2)
@@ -92,26 +39,13 @@ def density_avg(i):
     dens_avg = np.array([])
     
     for radius in range(rmin,rmax):
-        rad = frame['x1v'][radius]
-        rho = frame['rho'][0,:,radius]
-        vol = volframe['user_out_var13'][0,:,radius]
-        dphi = np.gradient(frame['x2v'])
-        sigma =  np.sum(rho*dphi)/(2*PI)
-        dens_avg = np.append(dens_avg, sigma)
+        sigma = frame2['user_out_var24'][0,:,radius]
+        sigma_avg =  np.sum(sigma)/(2*PI)
+        dens_avg = np.append(dens_avg, sigma_avg)
                            
     return [Radius, dens_avg]
 
-def am_avg(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+def am_avg(name, name2):
 
     frame = athdf(name)
     frame2 = athdf(name2)
@@ -125,30 +59,16 @@ def am_avg(i):
         rad = frame['x1v'][radius]
         rho = frame['rho'][0,:,radius]
         sigma = rho
-        vphi = frame['vel2'][0,:,radius] + Omega*rad
-        vol = volframe['user_out_var13'][0,:,radius]
         dphi = np.gradient(frame['x2v'])
-        am = np.sum(rad*rho*vphi*dphi)/(2*PI)
+        am = frame2['user_out_var25'][0,:,radius]
+        am = np.sum(am)/(2*PI)
         am_avg = np.append(am_avg, am)
         am_k = np.sum(np.sqrt(GM1*rad)*sigma*dphi)/(2*PI)
         am_kep = np.append(am_kep, am_k)
         
-    
-    #print(np.sum(frame2['user_out_var13'][0,:,:]))
-                           
     return [Radius, am_avg, am_kep]
 
-def mdot_avg(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+def mdot_avg(name, name2):
 
     frame = athdf(name)
     frame2 = athdf(name2)
@@ -157,33 +77,32 @@ def mdot_avg(i):
     Radius = frame['x1v']
     mdot_avg = np.array([])
 
-    #rvk = np.sqrt(GM1*Radius) 
     for radius in range(rmin,rmax):
-        rad = frame['x1v'][radius]
-        rho = frame['rho'][0,:,radius]
-        vr = frame['vel1'][0,:,radius]
-        vphi = frame['vel2'][0,:,radius] + Omega*rad
-        vol = volframe['user_out_var13'][0,:,radius]
-        dphi = np.gradient(frame['x2v'])
-        sigma = rho
-        mdot = np.sum(-rad*sigma*vr*dphi)
+        mdot =  -frame2['user_out_var21'][0,:,radius]
+        mdot = np.sum(mdot)
         mdot_avg = np.append(mdot_avg, mdot)
 
     return [Radius, mdot_avg]
 
 
+def alphaterm2_avg(name, name2):
 
-def alphaeff_avg(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+    frame = athdf(name)
+    frame2 = athdf(name2)
+    time = frame['Time']
+    
+    Radius = frame['x1v']
+    mdot_avg = np.array([])
+
+    for radius in range(rmin,rmax):
+        mdot =  frame2['user_out_var36'][0,:,radius]
+        mdot = np.sum(mdot)
+        mdot_avg = np.append(mdot_avg, mdot)
+
+    return [Radius, mdot_avg]
+
+
+def alphaeff_avg(name, name2):
 
     frame = athdf(name)
     frame2 = athdf(name2)
@@ -194,57 +113,118 @@ def alphaeff_avg(i):
 
     #rvk = np.sqrt(GM1*Radius) 
     for radius in range(rmin,rmax):
-        rad = frame['x1v'][radius]
-        rho = frame['rho'][0,:,radius]
-        press = frame['press'][0,:,radius]
-        vr = frame['vel1'][0,:,radius]
-        vphi = frame['vel2'][0,:,radius] + Omega*rad
-        vol = volframe['user_out_var13'][0,:,radius]
-        sigma = rho
-        dphi = np.gradient(frame['x2v'])
-        mdot = -rad*sigma*vr*dphi
-        cs2 = gamma_gas*press/(rho)
-        mdot_avg = np.sum(mdot)
-        omega_local = vphi/rad;
-        p_avg = np.sum(dphi*3*PI*sigma*cs2/omega_local)
 
-        alpha_avg = np.append(alpha_avg, mdot_avg/p_avg)
+        alpha_eff = frame2['user_out_var22'][0,:,radius]
+        alpha_eff  = np.sum(alpha_eff)
+        alpha_avg = np.append(alpha_avg, alpha_eff)
 
     return [Radius, alpha_avg]
 
 
-rad_avg = np.zeros_like(density_avg(150)[0]) 
-Delta_vPhi = np.zeros_like(density_avg(150)[0])
-Dens = np.zeros_like(density_avg(150)[0])
-AM = np.zeros_like(density_avg(150)[0])
-AMkep =  np.zeros_like(density_avg(150)[0])
-MDot = np.zeros_like(density_avg(150)[0])
-Alpha = np.zeros_like(density_avg(150)[0])
+def mach_avg(name, name2):
 
-count = 0
-for i in range(75,100):
-    print("reading frame "+str(i))
-    count += 1
-    rad_avg += density_avg(i)[0]
-    Delta_vPhi += deltavphi(i)[1]
-    Dens += density_avg(i)[1]
-    AM += am_avg(i)[1]
-    AMkep += am_avg(i)[2]
-    MDot += mdot_avg(i)[1]
-    Alpha += alphaeff_avg(i)[1]
+    frame = athdf(name)
+    frame2 = athdf(name2)
+    time = frame['Time']
+    
+    Radius = frame['x1v']
+    mach_avg = np.array([])
 
-rad_avg /= count
-Delta_vPhi /=  count
-Dens /= count
-AM /= count
-AMkep /= count
-MDot /= count
-Alpha /= count
+    for radius in range(rmin,rmax):
+        mach =  frame2['user_out_var33'][0,:,radius]
+        mach = np.sum(mach)
+        mach_avg = np.append(mach_avg, mach)
+
+    return [Radius, mach_avg]
+
+def plotvalues(gamma, start, end, dir, color, label, ax0, ax1, ax2, ax3):
+
+    #change file names here accordingly
+    if start < 10:
+        startframename = dir+'BDstream.out1.0000'+str(start)+'.athdf'
+        startframename2 = dir+'BDstream.out2.0000'+str(start)+'.athdf'
+    elif start >=100:
+        startframename = dir+'BDstream.out1.00'+str(start)+'.athdf'
+        startframename2 = dir+'BDstream.out2.00'+str(start)+'.athdf'
+    else:
+        startframename = dir+'BDstream.out1.000'+str(start)+'.athdf'
+        startframename2 = dir+'BDstream.out2.000'+str(start)+'.athdf'
+
+    starttime = athdf(startframename)['Time']
+
+    if end < 10:
+        endframename = dir+'BDstream.out1.0000'+str(end)+'.athdf'
+        endframename2 = dir+'BDstream.out2.0000'+str(end)+'.athdf'
+    elif end >=100:
+        endframename = dir+'BDstream.out1.00'+str(end)+'.athdf'
+        endframename2 = dir+'BDstream.out2.00'+str(end)+'.athdf'
+    else:
+        endframename = dir+'BDstream.out1.000'+str(end)+'.athdf'
+        endframename2 = dir+'BDstream.out2.000'+str(end)+'.athdf'
+
+    endtime = athdf(endframename)['Time']
+    dtime = endtime-starttime
+
+    rad_avg = density_avg(startframename, startframename2)[0]
+    Dens = density_avg(endframename,endframename2)[1] - density_avg(startframename, startframename2)[1]
+    Dens /= dtime
+    AM = am_avg(endframename,endframename2)[1] - am_avg(startframename, startframename2)[1]
+    AM /= dtime
+    MDot = mdot_avg(endframename,endframename2)[1] - mdot_avg(startframename, startframename2)[1]
+    MDot /= dtime
+    Alpha = alphaeff_avg(endframename,endframename2)[1] - alphaeff_avg(startframename, startframename2)[1]
+    Alpha /= dtime
+    Alpha_term2 = alphaterm2_avg(endframename,endframename2)[1] - alphaterm2_avg(startframename, startframename2)[1]
+    Alpha_term2 /= dtime
+
+    #make Keplerian AM
+    vkep = np.sqrt(GM1/rad_avg)
+    AMkep = rad_avg*vkep*Dens
+
+    ax0.plot(rad_avg, Dens,  lw=1.0, c=color, ls='--', label=label)
+    ax0.set_ylabel(r"$\Sigma$")
+    ax0.set_xlabel(r"R")
+    ax0.set_xlim(0.04, np.max(rad_avg))
+    ax0.set_xscale("log")
+    ax0.set_ylim(0.001,100.0)
+    ax0.set_yscale("log")
+    ax0.legend()
+
+    ax1.plot(rad_avg, AM, lw=1.0, c=color, ls='--')
+    ax1.plot(rad_avg, AMkep, lw=1.0, c=color, ls=':', label=r'$\rm AM_{kep}$')
+    ax1.set_ylabel(r"AM")
+    ax1.set_xlabel(r"R")
+    ax1.set_xlim(0.04, np.max(rad_avg))
+    ax1.set_xscale("log")
+    ax1.set_yscale("log")
+
+    ax2.plot(rad_avg, MDot, lw=1.0, c=color, ls='--')
+    ax2.set_ylabel(r"$\dot{M}$")
+    ax2.set_xlabel(r"R")
+    ax2.set_xlim(0.04, np.max(rad_avg))
+    ax2.set_xscale("log")
+    ax2.set_ylim(0,0.006)
+
+    ax3.plot(rad_avg, 2*PI*gamma*MDot/Alpha_term2, lw=1.0, c=color, ls='--')
+    ax3.set_ylabel(r"$\alpha_{\rm eff}$")
+    ax3.set_xlabel(r"R")
+    ax3.set_xlim(0.04, np.max(rad_avg))
+    ax3.set_xscale("log")
+    ax3.set_yscale("log")
+    ax3.set_ylim(0.008,1.0)
 
 
-file = open('gamma11.dat','w')
-file.write('rad,sigma,am,amkep,mdot,alpha\n')
+#Plotting
+fig = plt.figure(figsize=(12,8.5))
+fig.suptitle(r"t=75-100", fontsize=15)
+spec = gridspec.GridSpec(ncols=2,nrows=2)
+ax0 = fig.add_subplot(spec[0,0])
+ax1 = fig.add_subplot(spec[0,1])
+ax2 = fig.add_subplot(spec[1,0])
+ax3 = fig.add_subplot(spec[1,1])
 
-for i in range(0, len(rad_avg)):
-    file.write(str(rad_avg[i])+','+str(Dens[i])+','+str(AM[i])+','+str(AMkep[i])+','+str(MDot[i])+','+str(Alpha[i])+'\n')
+plotvalues(1.1,75,100,'/LyraShared/xh2pm/BinaryDisk_prep/inflow/highres_adiabatic/stampede/gamma11_hlle_new/', 'b', r'$\gamma=1.1$', ax0, ax1, ax2, ax3)
+
+plt.savefig("g11avg_75100.png")
+#plt.show()
 
