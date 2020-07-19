@@ -37,10 +37,10 @@ thmin = 0
 thmax = 352*2
 
 #Plotting
-fig = plt.figure(figsize=(20,7.5))
-spec = gridspec.GridSpec(ncols=2,nrows=1)
+fig = plt.figure(figsize=(10,7.5))
+spec = gridspec.GridSpec(ncols=1,nrows=1)
 ax0 = fig.add_subplot(spec[0,0])
-ax1 = fig.add_subplot(spec[0,1])
+#ax1 = fig.add_subplot(spec[0,1])
 
 
 #reading angular momentum
@@ -67,6 +67,8 @@ def readam(i):
     AM_nc = np.sum(frame2['user_out_var34'][0,:,:], axis=0)
         
     return [Radius, AM, time, AM_net, AM_nc]
+
+
 
 def intammdot(i):
     #change file names here accordingly
@@ -142,33 +144,41 @@ def inttorque(i):
         
     return [Radius, trr,  trr2]
 
-
 def plotam_nonrotate(start, end, ax0):
 
     rad_avg = readam(end)[0]
-    dAM = readam(end)[4]-readam(start)[4]
+    dAM_nr = readam(end)[4]-readam(start)[4]
+    dAM_r = readam(end)[1] - readam(start)[1] #take the difference of AM in nonrotating and corotating frame
     AMMdot = intammdot(end)[1] - intammdot(start)[1]
     AMTH_r = intamfh(end)[1] - intamfh(start)[1]
-    AMTH_nr = intamfh(end)[3] - intamfh(start)[3]
+    #AMTH_nr = intamfh(end)[3] - intamfh(start)[3]
     TR_nr = inttorque(end)[2] - inttorque(start)[2]
     TR_r  = inttorque(end)[1] - inttorque(start)[1]
-    TRdiff = TR_r - TR_nr
+    #this is an ad-hoc just to match Wendy's results
+    TRdiff = TR_r - TR_nr #take the difference of torque in nonrotating and corotating frame
+    AMdiff = dAM_r - dAM_nr
     dtime = readam(end)[2]-readam(start)[2]
 
-    dAM /= dtime
+    dAM_nr /= dtime
     AMMdot /= dtime
     AMTH_r /= dtime
-    AMTH_nr /= dtime
+    #AMTH_nr /= dtime
     TR_r /= dtime
     TR_nr /= dtime
     TRdiff /= dtime
+    AMdiff /= dtime
 
-    ax0.plot(rad_avg, dAM, label=r"$AM_{t}(R)$", lw=2.0, c='k')
+    AMTH_nr = AMTH_r+TRdiff-AMdiff
+
+
+    ax0.plot(rad_avg, dAM_nr, label=r"$AM_{t}(R)$", lw=2.0, c='k')
     ax0.plot(rad_avg, AMMdot, lw=2.0, label=r"$AM_{\dot{M}}(R)$", c='y', ls='-.')
+    #ax0.plot(rad_avg, AMTH_nr, lw=2.0, label=r"$AM_{TH}(R)$", c='deepskyblue')
     ax0.plot(rad_avg, AMTH_nr, lw=2.0, label=r"$AM_{TH}(R)$", c='deepskyblue')
     ax0.plot(rad_avg, TR_nr, lw=2.0, label=r"$T(R)$", ls='--', c='blue')
     ax0.plot(rad_avg, -(AMTH_nr+TR_nr), lw=2.0, ls=':', label=r'dissipation', c='k')
     ax0.plot(rad_avg, (AMMdot+AMTH_nr+TR_nr), ls='--', lw=2.0, c='r', label=r"$AM_{\dot{M}}(R)+AM_{FH}(R)+T(R)$")
+
 
     ax0.set_xlim(np.min(rad_avg), np.max(rad_avg))
     ax0.set_xlabel(r"R")
@@ -177,37 +187,7 @@ def plotam_nonrotate(start, end, ax0):
     ax0.set_title("non-rotating frame")
 
 
-def plotam_rotate(start, end, ax0):
-
-    rad_avg = readam(end)[0]
-    dAM = readam(end)[1]-readam(start)[1]
-    AMMdot = intammdot(end)[1] - intammdot(start)[1]
-    AMTH = intamfh(end)[1] - intamfh(start)[1]
-    TR = inttorque(end)[1] - inttorque(start)[1]
-    dtime = readam(end)[2]-readam(start)[2]
-
-    dAM /= dtime
-    AMMdot /= dtime
-    AMTH /= dtime
-    TR /= dtime
-
-    ax0.plot(rad_avg, dAM, label=r"$AM_{t}(R)$", lw=2.0, c='k')
-    ax0.plot(rad_avg, AMMdot, lw=2.0, label=r"$AM_{\dot{M}}(R)$", c='y', ls='-.')
-    ax0.plot(rad_avg, AMTH, lw=2.0, label=r"$AM_{TH}(R)$", c='deepskyblue')
-    ax0.plot(rad_avg, TR, lw=2.0, label=r"$T(R)$", ls='--', c='blue')
-    ax0.plot(rad_avg, -(AMTH+TR), lw=2.0, ls=':', label=r'dissipation', c='k')
-    ax0.plot(rad_avg, (AMMdot+AMTH+TR), ls='--', lw=2.0, c='r', label=r"$AM_{\dot{M}}(R)+AM_{FH}(R)+T(R)$")
-
-
-    ax0.set_xlim(np.min(rad_avg), np.max(rad_avg))
-    ax0.set_xlabel(r"R")
-    ax0.set_ylim(-1.5e-5, 1.5e-5)
-    ax0.legend(loc='best', frameon=False)
-    ax0.set_title("co-rotating frame")
-
-
 plotam_nonrotate(100,150,ax0)
-plotam_rotate(100,150,ax1)
 
-plt.savefig("AMdt_.png")
+plt.savefig("AMdt_compareWendy.png")
 
