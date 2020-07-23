@@ -1,0 +1,97 @@
+<comment>
+problem   = Binary accretion disk test
+configure = --prob=bianry_disk --coord=spherical_polar
+
+<job>
+problem_id = BDstream      # problem ID: basename of output filenames
+
+<output1>
+file_type  = hdf5       # Binary data dump
+variable   = prim       # variables to be output
+dt         = 0.1       # time increment between outputs
+#ghost_zones  = 1
+
+#<output2>
+#file_type  = hdf5
+#variable   = uov
+#dt         = 0.1
+#ghost_zones  = 1
+
+#<output3>
+#file_type  = hst      # history
+#dt         = 1.0e-3      # time increment between outputs
+
+<output4>
+file_type  = rst
+dt         = 10.0
+
+<time>
+cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim       = 2        # cycle limit
+tlim       = 0.5       # time limit
+
+<mesh>
+nx1        = 192                      # Number of zones in X1-direction
+x1rat      = 1.0180462507197607       # ratio between adjacent cell sizes
+x1min      = 0.02                     # minimum value of X1
+x1max      = 0.62                     # maximum value of X1
+ix1_bc     = outflow                     # inner-X1 boundary flag
+ox1_bc     = outflow                     # outer-X1 boundary flag
+
+nx2        =  352                     # Number of zones in X2-direction
+x2min      =  0.0                     # minimum value of X2
+x2max      =  6.283185307179586       # maximum value of X2
+ix2_bc     = periodic                 # inner-X2 boundary flag
+ox2_bc     = periodic                 # outer-X2 boundary flag
+
+nx3        = 1                        # Number of zones in X3-direction
+x3min      = -0.5                     # minimum value of X3
+x3max      = 0.5                      # maximum value of X3
+ix3_bc     = periodic                 # inner-X3 boundary flag
+ox3_bc     = periodic                 # outer-X3 boundary flag
+
+
+#refinement     = adaptive
+#numlevel       = 3
+#deref_count    = 5
+
+<meshblock>
+nx1        = 96         # Number of zones per MeshBlock in X1-direction
+nx2        = 176          # Number of zones per MeshBlock in X2-direction
+nx3        = 1         # Number of zones per MeshBlock in X3-direction
+
+<hydro>
+gamma           = 1.1        # gamma = C_p/C_v
+iso_sound_speed = 0.1        # isothermal sound speed
+dfloor          = 1.e-5
+pfloor          = 1.e-4
+polar_average = false
+
+<problem>
+Ggrav           = 1.0   # Gravity 
+GM1             = 0.7692307692307692	# mass of center
+GM2             = 0.23076923076923075	# mass of companion
+rsoft2          = 0.1	# softening length of mass 2
+sma             = 1.0   # separartion
+ecc             = 0.0 
+
+pamb          = 1.0e-17           # ambient pressure, not implemented
+damb          = 1.0e-17
+
+r0              = 0.3
+rho0            = 1.0
+p0_over_r0      = 0.01
+pslope          = -0.5
+dslope          = -2.25
+
+
+corotating_frame = 1                      # flag simulation in frame rotating around COM at initial orbital frequency
+particle_accrete = 0                      # flag for accretion, not tested
+
+gas_backreaction = 0                      # flag to include gas effect on orbit
+n_particle_substeps = 1                   # how many particle integration substeps per timestep?
+HSE_inner = 1                             # flag to make inner ghost cells with pressure/density gradient
+
+trackfile_dt = 1.e-1                      # dt for printing torques, particle properties
+
+change_setup = 0
