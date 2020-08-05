@@ -118,8 +118,8 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
       wroe[IDN] = sqrtdl*sqrtdr;
       wroe[IVX] = (sqrtdl*wli[IVX] + sqrtdr*wri[IVX])*isdlpdr;
       //--- Compute the max/min wave speeds based on L/R and Roe-averaged values
-      Real al = std::min((wroe[IVX] - a),(wli[IVX] - cl));
-      Real ar = std::max((wroe[IVX] + a),(wri[IVX] + cr));
+      al = std::min((wroe[IVX] - a),(wli[IVX] - cl));
+      ar = std::max((wroe[IVX] + a),(wri[IVX] + cr));
     }
 
     Real bp = ar > 0.0 ? ar : 0.0;
