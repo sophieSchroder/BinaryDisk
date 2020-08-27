@@ -141,7 +141,8 @@ Real Ggrav;
 // restart simulations
 int is_restart, change_setup;
 
-
+//steaming density perturb amplitude
+int stream_amp;
 
 
 //======================================================================================
@@ -190,6 +191,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   dfloor=pin->GetOrAddReal("hydro","dfloor",(1024*(float_min)));
 
   change_setup = pin->GetOrAddReal("problem", "change_setup", 0);
+
+  stream_amp = pin->GetOrAddReal("problem", "stream_amp", 0);
 
 
   // // enroll the BCs
@@ -1556,6 +1559,13 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
 
   Real vcirc = sqrt((GM1+GM2)/sma);
   Real Omega_orb = vcirc/sma;
+
+  Real secondary_x = xi[0];
+  Real secondary_y = xi[1];
+  Real secondary_r = sqrt(secondary_x*secondary_x+secondary_y*secondary_y)-sma;
+ 
+  // the amplitude of the stream density will equivalent to stream_amp*ecc
+  local_dens = local_dens*(1.0-stream_amp*secondary_r);
 
   for (int k=ks; k<=ke; ++k) {//z
     for (int j=js; j<=je; ++j) {//phi
