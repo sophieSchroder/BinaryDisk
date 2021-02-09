@@ -373,7 +373,7 @@ int RefinementCondition(MeshBlock *pmb)
   if(mindist <= 3.0*rsoft2) return 1;   // Do refinemt   
 }
 
-
+// SS and SAD made it here :) 
 
 
 
