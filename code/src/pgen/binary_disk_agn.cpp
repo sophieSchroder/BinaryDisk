@@ -282,8 +282,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     // In the case of a corotating frame,
     // subtract off the frame velocity and set Omega
     if(corotating_frame == 1){
-      Omega[1] = Omega_orb;
-      vi[1] -=  Omega[1]*xi[0];
+      Omega[2] = Omega_orb;
+      vi[1] -=  Omega[2]*xi[0];
     }
 
     // save the ruser_mesh_data variables
@@ -370,10 +370,8 @@ int RefinementCondition(MeshBlock *pmb)
     }
   }
   if(mindist >  3.0*rsoft2) return -1;
-  if(mindist <= 3.0*rsoft2) return 1;   // Do refinemt   
+  if(mindist <= 3.0*rsoft2) return 1;   // Do refinemt
 }
-
-// SS and SAD made it here :) 
 
 
 
@@ -396,38 +394,8 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
       std::cout <<"vi="<<vi[0]<<" "<<vi[1]<<" "<<vi[2]<<"\n";
       std::cout <<"Omega="<<Omega[0]<<" "<<Omega[1]<<" "<<Omega[2]<<"\n";
     }
-    if (change_setup==1){
-      Real vcirc, Omega_orb;
-      xi[0] = sma*(1.0 + ecc);  // apocenter
-      xi[1] = 0.0;
-      xi[2] = 0.0;
-
-      vcirc = sqrt((GM1+GM2)/sma);
-      Omega_orb = vcirc/sma;
-
-      vi[0] = 0.0;
-      vi[1]= sqrt( vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc) ); //v_apocenter
-      vi[2] = 0.0;
-
-      Omega[0] = pmb->pmy_mesh->ruser_mesh_data[2](0);
-      Omega[1] = pmb->pmy_mesh->ruser_mesh_data[2](1);
-      Omega[2] = pmb->pmy_mesh->ruser_mesh_data[2](2);
-
-      if(corotating_frame == 1){
-	Omega[2] = Omega_orb;
-	vi[1] -=  Omega[2]*xi[0];
-      }
-
-      if (Globals::my_rank==0){
-	std::cout << "*** Change initial conditions for restart ***\n";
-	std::cout <<"xi="<<xi[0]<<" "<<xi[1]<<" "<<xi[2]<<"\n";
-	std::cout <<"vi="<<vi[0]<<" "<<vi[1]<<" "<<vi[2]<<"\n";
-	std::cout <<"Omega="<<Omega[0]<<" "<<Omega[1]<<" "<<Omega[2]<<"\n";
-      }
-    }
 
     is_restart=0;
-    change_setup=0;
   }
 
 
@@ -562,9 +530,11 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real a_ph_net = -sin_ph*a_x + cos_ph*a_y;
 	Real a_z_net = a_z_cart;
 
+  // get density of cell
 	Real den = prim(IDN,k,j,i);
 
-        pmb->pmy_mesh->ruser_mesh_data[3](7,k,j,i) = den*a_r_net;
+  // return force density to ruser_mesh_data
+  pmb->pmy_mesh->ruser_mesh_data[3](7,k,j,i) = den*a_r_net;
 	pmb->pmy_mesh->ruser_mesh_data[3](8,k,j,i) = den*a_ph_net;
 	pmb->pmy_mesh->ruser_mesh_data[3](9,k,j,i) = den*a_z_net;
 
@@ -640,6 +610,8 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	cons(IM2,k,j,i) += src_2;
 	cons(IM3,k,j,i) += src_3;
 
+  // SAD & SS: do we want to add this in non-corotating part above?
+  // SAD & SS made it here :)
 
 	pmb->pmy_mesh->ruser_mesh_data[3](3,k,j,i) = 0.0;
 	if (NON_BAROTROPIC_EOS) {
