@@ -611,7 +611,6 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	cons(IM3,k,j,i) += src_3;
 
   // SAD & SS: do we want to add this in non-corotating part above?
-  // SAD & SS made it here :)
 
 	pmb->pmy_mesh->ruser_mesh_data[3](3,k,j,i) = 0.0;
 	if (NON_BAROTROPIC_EOS) {
@@ -817,6 +816,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
   Real press_init = 1.0e-4;
 
+  // SAD & SS: Start making changes to initial conditions here
   //  Initialize density and momenta
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
