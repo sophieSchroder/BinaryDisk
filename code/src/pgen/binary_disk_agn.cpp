@@ -131,6 +131,9 @@ Real ecc, sma;
 int particle_accrete;
 Real mdot, pdot[3]; // accretion parameters
 
+// disk set-up
+Real rho_0, scale_h;
+
 
 // for particle output file
 Real trackfile_next_time, trackfile_dt;
@@ -169,6 +172,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   r0 = pin->GetOrAddReal("problem","r0",1.0);
   corotating_frame = pin->GetInteger("problem","corotating_frame");
 
+  // get parameters for disk set-up
+  rho_0 = pin->GetReal("problem","rho_0");
+  scale_h = pin->GetReal("problem","scale_h");
 
   // softening of companion gravity
   rsoft2 = pin->GetOrAddReal("problem","rsoft2",0.1);
@@ -822,14 +828,23 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
-	Real r_local = pcoord->x1v(i);
-        phydro->u(IDN,k,j,i) = rho_floor;
-        phydro->u(IM1,k,j,i) = 0.0;
-	phydro->u(IM2,k,j,i) = rho_floor*pcoord->x1v(i)*(sqrt(GM1/pow(pcoord->x1v(i),3))-sqrt((GM1+GM2)/pow(sma,3)));
-        phydro->u(IM3,k,j,i) = 0.0;
-        if (NON_BAROTROPIC_EOS) {
-          phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
-          phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
+	       Real r_local = pcoord->x1v(i);
+         Real z_local = pcoord->x3v(i);
+         Real v_kep = SQR(GM1/r_local);
+         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
+         phydro->u(IDN,k,j,i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
+         // confirm that this is pressure with XH
+         // add pressure form Chan et al; eq 13/14
+         phydro->w(IPR,k,j,i) = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
+         phydro->u(IM1,k,j,i) = 0.0;
+	       phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
+                                pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
+         phydro->u(IM3,k,j,i) = 0.0;
+
+
+         if (NON_BAROTROPIC_EOS) {
+           phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
+           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
                                        + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
         }
       }
