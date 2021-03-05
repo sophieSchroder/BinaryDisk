@@ -820,9 +820,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     rho_floor = 1.0e-5;
   }
 
-  Real press_init = 1.0e-4;
+  Real press_init;
 
-  // SAD & SS: Start making changes to initial conditions here
   //  Initialize density and momenta
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
@@ -833,14 +832,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
          Real v_kep = SQR(GM1/r_local);
          Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
          phydro->u(IDN,k,j,i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
-         // confirm that this is pressure with XH
-         // add pressure form Chan et al; eq 13/14
-         phydro->w(IPR,k,j,i) = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
          phydro->u(IM1,k,j,i) = 0.0;
 	       phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
                                 pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
          phydro->u(IM3,k,j,i) = 0.0;
-
+         // adding pressure from Chan et al; eq 13/14
+         press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2)
 
          if (NON_BAROTROPIC_EOS) {
            phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
@@ -861,6 +858,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 //  \brief Function called once every time step for user-defined work.
 //======================================================================================
 
+// function that does particle step and accretion onto companion
 void Mesh::UserWorkInLoop(){
 
   ParameterInput *pin;
@@ -1022,9 +1020,6 @@ void Mesh::UserWorkInLoop(){
 
     }
   }
-
-
-
 }
 
 
@@ -1169,6 +1164,7 @@ void ParticleAccels(Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]){
 
 Real fspline(Real r, Real eps){
   // Hernquist & Katz 1989 spline kernel F=-GM r f(r,e) EQ A2
+  // softening for the companion
   Real u = r/eps;
   Real u2 = u*u;
 
@@ -1373,7 +1369,7 @@ void ParticleAccrete(Mesh *pm, Real(&xi)[3],Real(&vi)[3], Real(&mdot), Real(&pdo
 
 
 void SumGasOnParticleAccels(Mesh *pm, Real (&xi)[3],Real (&ag1i)[3],Real (&ag2i)[3]){
-
+  // find acceleration on particles from gas
   // start by setting accelerations / positions to zero
   for (int ii = 0; ii < 3; ii++){
     ag1i[ii] = 0.0;
@@ -1552,27 +1548,44 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
     for (int j=js; j<=je; ++j) {//phi
       Real phi_coord = pco->x2v(j);
       for (int i=1; i<=(NGHOST); ++i) {//R
+        // set disk conditions in ghost cells to fill disk
+        Real r_local = pco->x1v(ie+i); // ask XH: is this r coord? what is ie+i
+        Real z_local = pco->x3v(ie+i); //pco vs pcoord?
+        Real v_kep = SQR(GM1/r_local);
+        Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
+        prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
+        prim(IVX,k,j,ie+i) = 0.0;
+        prim(IVY,k,j,ie+i) = (pow(v_kep,2) - (0.5*pow(v_kep*z_local/r_local,2)
+                                              +pow(scale_h*v_kep,2)));
+        prim(IVZ,k,j,ie+i) = 0.0;
 
-	if (phi_coord<=0.1 || (2*PI-phi_coord<=0.1)){// if within L1 point
+        if (NON_BAROTROPIC_EOS) {
+      	     prim(IPR,k,j,ie+i) = prim(IDN,k,j,ie+i)*pow(scale_h*v_kep,2);
+      	}
 
-	  prim(IDN,k,j,ie+i) = local_dens;
-	  prim(IVX,k,j,ie+i) = local_vr;
-	  prim(IVY,k,j,ie+i) = 0.0; //pco->coord(ie+i)*sqrt(GM1/pow(sma,3)); //since we are in the corotating frame
-	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
 
-	  if (NON_BAROTROPIC_EOS) {
-	    prim(IPR,k,j,ie+i) = local_press;
-	  }
 
-	}else{//one-direction outflow
-	  prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
-	  prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
-	  prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
-	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
-	  if (NON_BAROTROPIC_EOS){
-	    prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
-	  }
-	}
+
+	// if (phi_coord<=0.1 || (2*PI-phi_coord<=0.1)){// if within L1 point
+  //   // why do we call this prim instead of phydro->u? Ask XH
+	//   prim(IDN,k,j,ie+i) = local_dens;
+	//   prim(IVX,k,j,ie+i) = local_vr;
+	//   prim(IVY,k,j,ie+i) = 0.0; //pco->coord(ie+i)*sqrt(GM1/pow(sma,3)); //since we are in the corotating frame
+	//   prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
+  //
+	//   if (NON_BAROTROPIC_EOS) {
+	//     prim(IPR,k,j,ie+i) = local_press;
+	//   }
+  //
+	// }else{//one-direction outflow
+	//   prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
+	//   prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
+	//   prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
+	//   prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
+	//   if (NON_BAROTROPIC_EOS){
+	//     prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
+	//   }
+	// }
 
 
 
