@@ -837,7 +837,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
                                 pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
          phydro->u(IM3,k,j,i) = 0.0;
          // adding pressure from Chan et al; eq 13/14
-         press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2)
+         press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
 
          if (NON_BAROTROPIC_EOS) {
            phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
