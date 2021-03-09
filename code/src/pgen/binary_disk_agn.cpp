@@ -87,7 +87,7 @@ void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
                  Real time, Real dt,
                  int il, int iu, int jl, int ju, int kl, int ku, int ngh);
 
-void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 			int is, int ie, int js, int je, int ks, int ke, int ngh);
 
 void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
@@ -211,7 +211,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
   if (mesh_bcs[BoundaryFace::outer_x1] == GetBoundaryFlag("user")) {
     if (change_setup==0){
-      EnrollUserBoundaryFunction(BoundaryFace::outer_x1, StreamingOuterX1);
+      EnrollUserBoundaryFunction(BoundaryFace::outer_x1, AGNDiskOuterX1);
     }else{
       EnrollUserBoundaryFunction(BoundaryFace::outer_x1, OutflowOuterX1);
     }
@@ -1530,7 +1530,7 @@ void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]){
 
 
 
-void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh){
   int L1flag = 0;
   Real local_dens = 1.0;
