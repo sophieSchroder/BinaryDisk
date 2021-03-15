@@ -51,9 +51,9 @@ def animated(i):
     
     
     #track file time 
-    pmtrack_index = i+1
-    secondary_x = pmtrackfile.x.iloc[1:i+2]
-    secondary_y = pmtrackfile.y.iloc[1:i+2]
+    pmtrack_index = i*5+1
+    secondary_x = pmtrackfile.x.iloc[1:i*5+2]
+    secondary_y = pmtrackfile.y.iloc[1:i*5+2]
 
     #change file names here accordingly
     hdf5_index = 405+i*5
@@ -62,6 +62,8 @@ def animated(i):
         name = base_dir +'BDrst_ecc.out1.0000'+str(hdf5_index)+'.athdf'
     elif hdf5_index  >=100:
         name = base_dir +'BDrst_ecc.out1.00'+str(hdf5_index)+'.athdf'
+    elif hdf5_index  >=1000:
+        name = base_dir +'BDrst_ecc.out1.0'+str(hdf5_index)+'.athdf'
     else:
         name = base_dir +'BDrst_ecc.out1.000'+str(hdf5_index)+'.athdf'
 
@@ -84,5 +86,5 @@ def animated(i):
     return [im]
 
 
-anim = animation.FuncAnimation(fig, animated, frames=240, interval=200, blit=True) #change frames= number of frames
+anim = animation.FuncAnimation(fig, animated, frames=110, interval=200, blit=True) #change frames= number of frames
 anim.save('BDrst_ecc02.mov',writer=FFwriter)
