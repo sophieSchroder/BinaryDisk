@@ -828,7 +828,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
 	       Real r_local = pcoord->x1v(i);
-         Real z_local = pcoord->x3v(i);
+         Real z_local = pcoord->x3v(k);
          Real v_kep = SQR(GM1/r_local);
          Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
          phydro->u(IDN,k,j,i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
@@ -1604,7 +1604,7 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
       for (int i=1; i<=(NGHOST); ++i) {//R
 	prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
 	prim(IVX,k,j,is-i) = std::min(0.0, prim(IVX,k,j,is));
-	prim(IVY,k,j,is-i) = pco->x1v(is-i)*(sqrt(GM1/pow(pco->x1v(is-i),3))-sqrt((GM1+GM2)/pow(sma,3)));
+	prim(IVY,k,j,is-i) =  prim(IVY,k,j,is);   //pco->x1v(is-i)*(sqrt(GM1/pow(pco->x1v(is-i),3))-sqrt((GM1+GM2)/pow(sma,3)));
 	prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
 	if (NON_BAROTROPIC_EOS){
 	  prim(IPR,k,j,is-i) = prim(IPR,k,j,is);
