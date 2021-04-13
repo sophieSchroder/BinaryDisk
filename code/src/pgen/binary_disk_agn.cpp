@@ -827,11 +827,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
-<<<<<<< HEAD
-	       Real r_local = pcoord->x1v(i);
-=======
 	 Real r_local = pcoord->x1v(i);
->>>>>>> be15ef93e20df4b939a2e34dd3ffc29c7db09c9c
          Real z_local = pcoord->x3v(k);
          Real v_kep = SQR(GM1/r_local);
          Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
