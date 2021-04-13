@@ -828,9 +828,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
 	       Real r_local = pcoord->x1v(i);
-         Real z_local = pcoord->x3v(i);
+         Real z_local = pcoord->x3v(k);
          Real v_kep = SQR(GM1/r_local);
-         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
+         Real delta_phi =   0.5*pow(v_kep,2)*pow(z_local/r_local,2);
          phydro->u(IDN,k,j,i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
          phydro->u(IM1,k,j,i) = 0.0;
 	       phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
@@ -1550,7 +1550,7 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
       for (int i=1; i<=(NGHOST); ++i) {//R
         // set disk conditions in ghost cells to fill disk
         Real r_local = pco->x1v(ie+i); // ask XH: is this r coord? what is ie+i
-        Real z_local = pco->x3v(ie+i); //pco vs pcoord?
+        Real z_local = pco->x3v(ke+i); //pco vs pcoord?
         Real v_kep = SQR(GM1/r_local);
         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
         prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
