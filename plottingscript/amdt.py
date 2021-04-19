@@ -206,8 +206,8 @@ def plotam_rotate(start, end, ax0):
     ax0.set_title("co-rotating frame")
 
 
-plotam_nonrotate(100,150,ax0)
-plotam_rotate(100,150,ax1)
-
-plt.savefig("AMdt_.png")
+plotam_nonrotate(45,20,ax0)
+plotam_rotate(45,20,ax1)
+plt.show()
+#plt.savefig("AMdt_.png")
 
