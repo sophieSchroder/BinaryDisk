@@ -240,18 +240,18 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   if (blocksizex2 >1) blocksizex2 += 2*(NGHOST);
   if (blocksizex3 >1) blocksizex3 += 2*(NGHOST);
 
-  AllocateRealUserMeshDataField(8);
+  AllocateRealUserMeshDataField(6);
   ruser_mesh_data[0].NewAthenaArray(3);
   ruser_mesh_data[1].NewAthenaArray(3);
   ruser_mesh_data[2].NewAthenaArray(3);
   ruser_mesh_data[3].NewAthenaArray(10,blocksizex3, blocksizex2, blocksizex1);
   //check the gravitational potential
   ruser_mesh_data[4].NewAthenaArray(3,blocksizex3, blocksizex2, blocksizex1);
-  ruser_mesh_data[5].NewAthenaArray(6,blocksizex3, blocksizex2, blocksizex1);
+  //ruser_mesh_data[5].NewAthenaArray(6,blocksizex3, blocksizex2, blocksizex1);
   //store the time averaged quantities
-  ruser_mesh_data[6].NewAthenaArray(11,blocksizex3, blocksizex2, blocksizex1);
+  //ruser_mesh_data[6].NewAthenaArray(11,blocksizex3, blocksizex2, blocksizex1);
   //L1 point location
-  ruser_mesh_data[7].NewAthenaArray(3);
+  ruser_mesh_data[5].NewAthenaArray(3);
 
   //ONLY enter ICs loop if this isn't a restart
   if(time==0){
@@ -298,7 +298,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
       ruser_mesh_data[0](i)  = xi[i];
       ruser_mesh_data[1](i)  = vi[i];
       ruser_mesh_data[2](i)  = Omega[i];
-      ruser_mesh_data[7](i)  = L1[i];
+      ruser_mesh_data[5](i)  = L1[i];
     }
 
 
@@ -679,6 +679,33 @@ void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
 
   AllocateUserOutputVariables(38); //store two point mass function
+
+    // allocate MESHBLOCK data for the integrated AM budget
+  int blocksizex1 = pin->GetOrAddInteger("meshblock", "nx1", 1);
+  int blocksizex2 = pin->GetOrAddInteger("meshblock", "nx2", 1);
+  int blocksizex3 = pin->GetOrAddInteger("meshblock", "nx3", 1);
+  blocksizex1 += 2*(NGHOST);
+  if (blocksizex2 >1) blocksizex2 += 2*(NGHOST);
+  if (blocksizex3 >1) blocksizex3 += 2*(NGHOST);
+  AllocateRealUserMeshBlockDataField(2);
+
+  ruser_meshblock_data[0].NewAthenaArray(6,blocksizex3, blocksizex2, blocksizex1);
+  //store the time averaged quantities
+  ruser_meshblock_data[1].NewAthenaArray(11,blocksizex3, blocksizex2, blocksizex1);
+
+  for(int k=0; k<blocksizex3; k++){
+    for(int j=0; j<blocksizex2; j++){
+      for(int i=0; i<blocksizex1; i++){
+	for (int index=0; index<11; index++){
+	  ruser_meshblock_data[1](index,k,j,i) = 0.0;
+	}
+	for (int index=0; index<6; index++){
+	  ruser_meshblock_data[0](index,k,j,i) = 0.0;
+	}
+      }
+    }
+  }
+  
   return;
 }
 
@@ -778,38 +805,38 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	user_out_var(15,k,j,i) = pmy_mesh->ruser_mesh_data[4](2,k,j,i); //F_grav_ph (R, phi)
 
 	//store the time integrated AMMdot, AMTH and Torque
-	user_out_var(16,k,j,i) = pmy_mesh->ruser_mesh_data[5](0,k,j,i); //AMMdot
-	user_out_var(17,k,j,i) = pmy_mesh->ruser_mesh_data[5](1,k,j,i); //AMTH
-	user_out_var(18,k,j,i) = pmy_mesh->ruser_mesh_data[5](2,k,j,i); //AMTH_net
-	user_out_var(37,k,j,i) = pmy_mesh->ruser_mesh_data[5](5,k,j,i); //AMTH non coratating
-	user_out_var(19,k,j,i) = pmy_mesh->ruser_mesh_data[5](3,k,j,i); //torque
-	user_out_var(20,k,j,i) = pmy_mesh->ruser_mesh_data[5](4,k,j,i); //net torque (no Coriolis)
+	user_out_var(16,k,j,i) = ruser_meshblock_data[0](0,k,j,i); //AMMdot
+	user_out_var(17,k,j,i) = ruser_meshblock_data[0](1,k,j,i); //AMTH
+	user_out_var(18,k,j,i) = ruser_meshblock_data[0](2,k,j,i); //AMTH_net
+	user_out_var(37,k,j,i) = ruser_meshblock_data[0](5,k,j,i); //AMTH non coratating
+	user_out_var(19,k,j,i) = ruser_meshblock_data[0](3,k,j,i); //torque
+	user_out_var(20,k,j,i) = ruser_meshblock_data[0](4,k,j,i); //net torque (no Coriolis)
 
 
 	//store the time integrated quantities for radial profile
-	user_out_var(21,k,j,i) = pmy_mesh->ruser_mesh_data[6](0,k,j,i); //Mdot
-	user_out_var(22,k,j,i) = pmy_mesh->ruser_mesh_data[6](1,k,j,i); //alpha_eff
-	user_out_var(23,k,j,i) = pmy_mesh->ruser_mesh_data[6](2,k,j,i); //3*PI*sigma*cs*H
-	user_out_var(36,k,j,i) = pmy_mesh->ruser_mesh_data[6](10,k,j,i); //3*PI*sigma*cs*H, with omega=omega_kep
-	user_out_var(24,k,j,i) = pmy_mesh->ruser_mesh_data[6](3,k,j,i); //surface density
-	user_out_var(25,k,j,i) = pmy_mesh->ruser_mesh_data[6](4,k,j,i); //AM
+	user_out_var(21,k,j,i) = ruser_meshblock_data[1](0,k,j,i); //Mdot
+	user_out_var(22,k,j,i) = ruser_meshblock_data[1](1,k,j,i); //alpha_eff
+	user_out_var(23,k,j,i) = ruser_meshblock_data[1](2,k,j,i); //3*PI*sigma*cs*H
+	user_out_var(36,k,j,i) = ruser_meshblock_data[1](10,k,j,i); //3*PI*sigma*cs*H, with omega=omega_kep
+	user_out_var(24,k,j,i) = ruser_meshblock_data[1](3,k,j,i); //surface density
+	user_out_var(25,k,j,i) = ruser_meshblock_data[1](4,k,j,i); //AM
 
 	//grid related values
 	user_out_var(26,k,j,i) = pcoord->dx2f(j); //dphi 
 	user_out_var(27,k,j,i) = pcoord->GetCellVolume(k,j,i); //vol
 
 	//time integration of radial profile
-	user_out_var(28,k,j,i) = pmy_mesh->ruser_mesh_data[6](5,k,j,i); //TR = <sigma*vr*dvphi*dphi>
-	user_out_var(29,k,j,i) = pmy_mesh->ruser_mesh_data[6](6,k,j,i); // <RcrossFext*dphi>
-	user_out_var(30,k,j,i) = pmy_mesh->ruser_mesh_data[6](7,k,j,i); // <RcrossFext*dphi>
+	user_out_var(28,k,j,i) = ruser_meshblock_data[1](5,k,j,i); //TR = <sigma*vr*dvphi*dphi>
+	user_out_var(29,k,j,i) = ruser_meshblock_data[1](6,k,j,i); // <RcrossFext*dphi>
+	user_out_var(30,k,j,i) = ruser_meshblock_data[1](7,k,j,i); // <RcrossFext*dphi>
 
 	//mdot
 	user_out_var(31,k,j,i) = pcoord->GetFace1Area(k,j,i+1)*x1flux(IDN,k,j,i+1); //check m dot at outer boundary
 	
 	//pressure
-	user_out_var(32,k,j,i) = pmy_mesh->ruser_mesh_data[6](8,k,j,i);
+	user_out_var(32,k,j,i) = ruser_meshblock_data[1](8,k,j,i);
 	//mach number
-	user_out_var(33,k,j,i) = pmy_mesh->ruser_mesh_data[6](9,k,j,i);
+	user_out_var(33,k,j,i) = ruser_meshblock_data[1](9,k,j,i);
      
       }
 
@@ -931,7 +958,7 @@ void Mesh::UserWorkInLoop(){
     ruser_mesh_data[0](i)  = xi[i];
     ruser_mesh_data[1](i)  = vi[i];
     ruser_mesh_data[2](i)  = Omega[i];
-    ruser_mesh_data[7](i)  = L1[i];
+    ruser_mesh_data[5](i)  = L1[i];
   }
 
   // sum the gas->part accel for the next step
@@ -987,31 +1014,31 @@ void Mesh::UserWorkInLoop(){
 
 	//int AMModt
 	Real AMMdot = -rad_c*x1flux(IDN,k,j,i)*(vkep_p*pcoord->GetFace1Area(k,j,i+1)- vkep_m*pcoord->GetFace1Area(k,j,i));
-	ruser_mesh_data[5](0,k,j,i) += AMMdot*dt;
+        pmb->ruser_meshblock_data[0](0,k,j,i) += AMMdot*dt;
 
 	//int AMTH
 	Real AMTH = rad_p*pcoord->GetFace1Area(k,j,i+1)*(x1flux(IM2,k,j,i+1)-x1flux(IDN,k,j,i+1)*vkep_p) - rad_m*pcoord->GetFace1Area(k,j,i)*(x1flux(IM2,k,j,i)-x1flux(IDN,k,j,i)*vkep_m);
-	ruser_mesh_data[5](1,k,j,i) += -AMTH*dt;
+        pmb->ruser_meshblock_data[0](1,k,j,i) += -AMTH*dt;
 	//AMTH, no vkep 
 	Real AMTH_net = rad_p*pcoord->GetFace1Area(k,j,i+1)*x1flux(IM2,k,j,i+1) - rad_m*pcoord->GetFace1Area(k,j,i)*x1flux(IM2,k,j,i);
-        ruser_mesh_data[5](2,k,j,i) += -AMTH_net*dt;
+        pmb->ruser_meshblock_data[0](2,k,j,i) += -AMTH_net*dt;
 
 	Real AMTH_noncorotate = rad_p*pcoord->GetFace1Area(k,j,i+1)*(x1flux(IM2,k,j,i+1)-x1flux(IDN,k,j,i+1)*vkep_p + x1flux(IDN,k,j,i+1)*v_rotate_p) - rad_m*pcoord->GetFace1Area(k,j,i)*(x1flux(IM2,k,j,i)-x1flux(IDN,k,j,i)*vkep_m +x1flux(IDN,k,j,i)*v_rotate_m);
-	ruser_mesh_data[5](5,k,j,i) += -AMTH_noncorotate*dt;
+        pmb->ruser_meshblock_data[0](5,k,j,i) += -AMTH_noncorotate*dt;
 
 	//Torque
 	// fect includes Coriolis force
 	Real Torque = rad_c*ruser_mesh_data[3](1,k,j,i)*pcoord->GetCellVolume(k,j,i);
 	// fext has no Coriolis force component
 	Real Torque_ =  rad_c*ruser_mesh_data[3](8,k,j,i)*pcoord->GetCellVolume(k,j,i);	
-        ruser_mesh_data[5](3,k,j,i) += Torque*dt;
-        ruser_mesh_data[5](4,k,j,i) += Torque_*dt;
+        pmb->ruser_meshblock_data[0](3,k,j,i) += Torque*dt;
+        pmb->ruser_meshblock_data[0](4,k,j,i) += Torque_*dt;
 
 	//Time integrated radial profiles
 	//Mdot = int(sigma*vr*rad)
 	Real sigma_c= rho_c*pcoord->GetCellVolume(k,j,i)/pcoord->GetFace3Area(k,j,i);
 	Real mdot  = sigma_c*rad_c*vr_c*pcoord->dx2f(j); 
-	ruser_mesh_data[6](0,k,j,i) += mdot*dt;
+        pmb->ruser_meshblock_data[1](0,k,j,i) += mdot*dt;
 	
 	//alpha_eff = Mdot/(3pi*sigma*H*cs)
 	//Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
@@ -1023,25 +1050,25 @@ void Mesh::UserWorkInLoop(){
 	Real omega_kep_c = sqrt(GM1/pow(rad_c,3));
 	Real press_avg_ = pcoord->dx2f(j)*3*PI*sigma_c*cs2_c/omega_kep_c;
 	
-	ruser_mesh_data[6](1,k,j,i) += dt*mdot/press_avg;
-	ruser_mesh_data[6](2,k,j,i) += dt*press_avg;
-	ruser_mesh_data[6](10,k,j,i) += dt*press_avg_;
+	pmb->ruser_meshblock_data[1](1,k,j,i) += dt*mdot/press_avg;
+        pmb->ruser_meshblock_data[1](2,k,j,i) += dt*press_avg;
+        pmb->ruser_meshblock_data[1](10,k,j,i) += dt*press_avg_;
 
 	//surface density
-	ruser_mesh_data[6](3,k,j,i) += dt*sigma_c*pcoord->dx2f(j);
+        pmb->ruser_meshblock_data[1](3,k,j,i) += dt*sigma_c*pcoord->dx2f(j);
 	
 	//am
-	ruser_mesh_data[6](4,k,j,i) += dt*sigma_c*rad_c*vphi_local*pcoord->dx2f(j);
+        pmb->ruser_meshblock_data[1](4,k,j,i) += dt*sigma_c*rad_c*vphi_local*pcoord->dx2f(j);
 
 	//the Reynold stress term of mdot
-	ruser_mesh_data[6](5,k,j,i) += dt*sigma_c*vr_c*(vphi_local-vkep_c)*pcoord->dx2f(j); //Tr = <sigma*deltavphi>
+        pmb->ruser_meshblock_data[1](5,k,j,i) += dt*sigma_c*vr_c*(vphi_local-vkep_c)*pcoord->dx2f(j); //Tr = <sigma*deltavphi>
 	//the torque term of mdot
-	ruser_mesh_data[6](6,k,j,i) += dt*rad_c*ruser_mesh_data[3](1,k,j,i)*pcoord->dx2f(j); //includes Coriolis
-	ruser_mesh_data[6](7,k,j,i) += dt*rad_c*ruser_mesh_data[3](8,k,j,i)*pcoord->dx2f(j); //net fext
+        pmb->ruser_meshblock_data[1](6,k,j,i) += dt*rad_c*ruser_mesh_data[3](1,k,j,i)*pcoord->dx2f(j); //includes Coriolis
+	pmb->ruser_meshblock_data[1](7,k,j,i) += dt*rad_c*ruser_mesh_data[3](8,k,j,i)*pcoord->dx2f(j); //net fext
 	//the pressure term of mdot
-	ruser_mesh_data[6](8,k,j,i) += dt*phydro->w(IPR,k,j,i)*pcoord->dx2f(j);
+        pmb->ruser_meshblock_data[1](8,k,j,i) += dt*phydro->w(IPR,k,j,i)*pcoord->dx2f(j);
 	//the mach number
-	ruser_mesh_data[6](9,k,j,i) += dt*(vtot/sqrt(cs2_c))*pcoord->dx2f(j);
+        pmb->ruser_meshblock_data[1](9,k,j,i) += dt*(vtot/sqrt(cs2_c))*pcoord->dx2f(j);
 
       }//end phi    
 
@@ -1615,7 +1642,7 @@ void StreamingOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
   //L1[1] = L1_r*sin(L1_phi);//L1 ycoord
   //L1[2] = 0.0;
   for(int i=0; i<3; i++){
-    L1[i] = pmb->pmy_mesh->ruser_mesh_data[7](i);
+    L1[i] = pmb->pmy_mesh->ruser_mesh_data[5](i);
   }
   
   for (int k=ks; k<=ke; ++k) {//z
