@@ -827,14 +827,15 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
-	 Real r_local = pcoord->x1v(i);
+	       Real r_local = pcoord->x1v(i);
          Real z_local = pcoord->x3v(k);
          Real v_kep = SQR(GM1/r_local);
          Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
          phydro->u(IDN,k,j,i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
          phydro->u(IM1,k,j,i) = 0.0;
-	 phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
-                                pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
+	       phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
+                                pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2))
+                                - 1.0); // subtracting off v_frame
          phydro->u(IM3,k,j,i) = 0.0;
          // adding pressure from Chan et al; eq 13/14
          press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
