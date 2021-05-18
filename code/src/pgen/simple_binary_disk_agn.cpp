@@ -96,6 +96,10 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
 void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh);
 
+// from disk.cpp
+Real DenProfileCyl(const Real rad, const Real phi, const Real z);
+Real PoverR(const Real rad, const Real phi, const Real z);
+Real VelProfileCyl(const Real rad, const Real phi, const Real z);
 
 Real massfluxix1(MeshBlock *pmb, int iout);
 Real massfluxox1(MeshBlock *pmb, int iout);
@@ -112,8 +116,10 @@ void KeplerianVel(const Real rad, const Real theta, const Real phi, Real &v1, Re
 
 
 // problem parameters which are useful to make global to this file
-Real r0, gamma_gas;
+// added some from disk.cpp
+Real r0, gamma_gas, dslope, p0_over_r0, pslope, Omega0;
 Real dfloor;
+
 
 // global (to this file) problem parameters
 Real da,pa; // ambient density, pressure
@@ -157,6 +163,17 @@ int is_restart, change_setup;
 void Mesh::InitUserMeshData(ParameterInput *pin)
 {
   // read in some global params (to this file)
+  // some new ones from disk.cpp
+  dslope = pin->GetOrAddReal("problem","dslope",0.0);
+  Omega0 = pin->GetOrAddReal("problem","Omega0",0.0);
+  // Get parameters of initial pressure and cooling parameters
+  if (NON_BAROTROPIC_EOS) {
+    p0_over_r0 = pin->GetOrAddReal("problem","p0_over_r0",0.0025);
+    pslope = pin->GetOrAddReal("problem","pslope",0.0);
+  } else {
+    p0_over_r0=SQR(pin->GetReal("hydro","iso_sound_speed"));
+  }
+
 
   // first non-mode-dependent settings
   //pressure and density of background medium
@@ -794,6 +811,7 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real rad(0.0), phi(0.0), z(0.0);
   Real v1(0.0), v2(0.0), v3(0.0);
+  Real den, vel;
 
 	// local vars for background - not implemented
   //Real den, pres;
@@ -827,24 +845,42 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
-	 Real r_local = pcoord->x1v(i);
+	       Real r_local = pcoord->x1v(i);
          Real z_local = pcoord->x3v(k);
-         Real v_kep = SQR(GM1/r_local);
-         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
-         phydro->u(IDN,k,j,i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
+
+         // from disk.cpp
+         Real rad=pcoord->x1v(i);
+         Real phi=pcoord->x2v(j);
+         Real z=pcoord->x3v(k);
+
+         den = DenProfileCyl(rad,phi,z);
+         vel = VelProfileCyl(rad,phi,z);
+
+         //Real v_kep = SQR(GM1/r_local);
+         //Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
+
+         // from disk.cpp
+         phydro->u(IDN,k,j,i) = den;
+         //phydro->u(IDN,k,j,i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
          phydro->u(IM1,k,j,i) = 0.0;
-	 phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
-                                pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
+         phydro->u(IM2,k,j,i) = den*vel;
+	       //phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
+        //                        pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
                                 // to subtract off v_frame: add-1.0 in last parenth
          phydro->u(IM3,k,j,i) = 0.0;
          // adding pressure from Chan et al; eq 13/14
-         press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
-
+         //press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
 
          if (NON_BAROTROPIC_EOS) {
-           phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
+           Real p_over_r = PoverR(rad,phi,z);
+           phydro->u(IEN,k,j,i) = p_over_r*phydro->u(IDN,k,j,i)/(gamma_gas - 1.0);
            phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
-                                       + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
+                               + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
+
+         // if (NON_BAROTROPIC_EOS) {
+         //   phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
+         //   phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
+         //                               + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
         }
       }
     }
@@ -1465,9 +1501,36 @@ void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]){
   AxB[2] = A[0]*B[1] - A[1]*B[0];
 }
 
+// from disk.cpp
+//! computes density in cylindrical coordinates
 
+Real DenProfileCyl(const Real rad, const Real phi, const Real z) {
+  Real den;
+  Real p_over_r = p0_over_r0;
+  if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
+  Real denmid = rho_0*std::pow(rad/r0,dslope);
+  Real dentem = denmid*std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
+  den = dentem;
+  return std::max(den,dfloor);
+}
 
+//! computes pressure/density in cylindrical coordinates
 
+Real PoverR(const Real rad, const Real phi, const Real z) {
+  Real poverr;
+  poverr = p0_over_r0*std::pow(rad/r0, pslope);
+  return poverr;
+}
+
+//! computes rotational velocity in cylindrical coordinates
+
+Real VelProfileCyl(const Real rad, const Real phi, const Real z) {
+  Real p_over_r = PoverR(rad, phi, z);
+  Real vel = (dslope+pslope)*p_over_r/(GM1/rad) + (1.0+pslope)
+             - pslope*rad/std::sqrt(rad*rad+z*z);
+  vel = std::sqrt(GM1/rad)*std::sqrt(vel) - rad*Omega0;
+  return vel;
+}
 
 // //--------------------------------------------------------------------------------------
 // //! \fn void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
