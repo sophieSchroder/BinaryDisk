@@ -829,11 +829,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         // compute initial conditions in cylindrical coordinates
 	 Real r_local = pcoord->x1v(i);
          Real z_local = pcoord->x3v(k);
-         Real v_kep = SQR(GM1/r_local);
+         Real v_kep = sqrt(GM1/r_local);
          Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
          phydro->u(IDN,k,j,i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: change to simplified eq.
          phydro->u(IM1,k,j,i) = 0.0;
-	 Real vtheta = v_kep*SQR(1-0.5*pow(z_local/r_local,2)-pow(scale_h,2));//CS: change to simplified eq. 
+	 Real vtheta = v_kep*SQR(1-0.5*pow(z_local/r_local,2)-pow(scale_h,2));//XS: change to simplified eq. 
 	 //is scale_h the disk aspect ratio?
 	 phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
                                 //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
