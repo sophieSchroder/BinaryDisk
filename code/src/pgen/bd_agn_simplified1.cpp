@@ -835,9 +835,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
          phydro->u(IM1,k,j,i) = 0.0;
 	 Real vtheta = v_kep*sqrt(1-0.5*pow(z_local/r_local,2)-pow(scale_h,2));//XS: change to simplified eq. 
 	 //is scale_h the disk aspect ratio?
-	 phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*pow(vtheta,2); //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
+	 phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
                                 //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
-                                //SD: 6/15 make vthetha squared
          phydro->u(IM3,k,j,i) = 0.0;
          // adding pressure from Chan et al; eq 13/14
          press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
