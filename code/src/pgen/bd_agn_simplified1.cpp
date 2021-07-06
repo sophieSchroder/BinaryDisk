@@ -833,8 +833,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
          Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
          phydro->u(IDN,k,j,i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: change to simplified eq.
          phydro->u(IM1,k,j,i) = 0.0;
-	 Real vtheta = v_kep*sqrt(1-0.5*pow(z_local/r_local,2)-pow(scale_h,2));//XS: change to simplified eq. 
-	 //is scale_h the disk aspect ratio?
+	 Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
+	 inner_sqrt = std::max(inner_sqrt, 0.0);	
+	 Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq. 
+	 vtheta = (vtheta/r_local - 1.0) * r_local; //SD: -1.0 is the angular velocity of the frame
 	 phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
                                 //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
          phydro->u(IM3,k,j,i) = 0.0;
