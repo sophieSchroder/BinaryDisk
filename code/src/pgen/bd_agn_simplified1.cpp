@@ -522,17 +522,17 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//or
 	//Real a_r1 = -GM1/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2,
   Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
-
-  if(gradual_m2 == 1) && (pblock->pmy_mesh->time < 12.5664){ //and if time is less than 2 orbital periods (4pi)
+  Real a_x, a_y, a_z_cart;
+  if(gradual_m2 == 1 && pmb->pmy_mesh->time < 12.5664){ //and if time is less than 2 orbital periods (4pi)
     // PM2 gravitational accels in cartesian coordinates
-    Real g_frac = (1/12.5664) * pblock->pmy_mesh->time;
-  	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2) * g_frac;
-  	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2) * g_frac;
-  	Real a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2) * g_frac;
+    Real g_frac = (1/12.5664) * pmb->pmy_mesh->time;
+    a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2) * g_frac;
+    a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2) * g_frac;
+    a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2) * g_frac;
   } else {
-    Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
-  	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
-  	Real a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2);
+    a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
+    a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
+    a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2);
   }
 	// add the correction for the orbiting frame (relative to the COM)
 	a_x += -  GM2 / d12c * x_2;
