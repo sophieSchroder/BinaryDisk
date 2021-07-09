@@ -1071,10 +1071,12 @@ void Mesh::UserWorkInLoop(){
 	Real IE_isothermal = rho_c * Temp_iso/(gamma_gas -1.0);
 	Real IE_cool = IE_now - IE_isothermal;
 
-	//pmb->ruser_meshblock_data[0](6,k,j,i) = IE_cool;
-	phydro->w(IPR,k,j,i) = rho_c * Temp_iso;
-	//phydro->u(IEN,k,j,i) -= IE_cool;
-
+	pmb->ruser_meshblock_data[0](6,k,j,i) = 0.0;
+        if (IE_isothermal < IE_now ){
+	  pmb->ruser_meshblock_data[0](6,k,j,i) = IE_cool;
+	  phydro->w(IPR,k,j,i) = rho_c * Temp_iso;
+	  phydro->u(IEN,k,j,i) -= IE_cool;
+        }
       }//end phi    
 
     }
