@@ -123,6 +123,7 @@ Real da,pa; // ambient density, pressure
 Real GM2, GM1; // point masses
 Real rsoft2; // softening length of PM 2
 int  include_gas_backreaction, corotating_frame; // flags for output, gas backreaction on EOM, frame choice
+int gradual_m2; // flag for turning on gravity of m2 slowly
 int n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
 Real Omega[3];  // vector rotation of the frame
@@ -171,6 +172,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   GM2 = pin->GetOrAddReal("problem","GM2",1.0);
   r0 = pin->GetOrAddReal("problem","r0",1.0);
   corotating_frame = pin->GetInteger("problem","corotating_frame");
+  gradual_m2 = pin->GetOrAddInteger("problem","gradual_m2",0);
 
   // get parameters for disk set-up
   rho_0 = pin->GetReal("problem","rho_0");
@@ -519,13 +521,19 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	// Real a_r1 = -GM1/(r*r+z*z); //for not using cell-volume averaged quantities <1/r>, just use r*r+z*z
 	//or
 	//Real a_r1 = -GM1/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2,
-        Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
+  Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
 
-	// PM2 gravitational accels in cartesian coordinates
-	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
-	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
-	Real a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2);
-
+  if(gradual_m2 == 1) && (pblock->pmy_mesh->time < 12.5664){ //and if time is less than 2 orbital periods (4pi)
+    // PM2 gravitational accels in cartesian coordinates
+    Real g_frac = (1/12.5664) * pblock->pmy_mesh->time;
+  	Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2) * g_frac;
+  	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2) * g_frac;
+  	Real a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2) * g_frac;
+  } else {
+    Real a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
+  	Real a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
+  	Real a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2);
+  }
 	// add the correction for the orbiting frame (relative to the COM)
 	a_x += -  GM2 / d12c * x_2;
 	a_y += -  GM2 / d12c * y_2;
@@ -827,17 +835,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
-	 Real r_local = pcoord->x1v(i);
+	       Real r_local = pcoord->x1v(i);
          Real z_local = pcoord->x3v(k);
          Real v_kep = sqrt(GM1/r_local);
          Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
          phydro->u(IDN,k,j,i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: change to simplified eq.
          phydro->u(IM1,k,j,i) = 0.0;
-	 Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
-	 inner_sqrt = std::max(inner_sqrt, 0.0);	
-	 Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq. 
-	 vtheta = (vtheta/r_local - 1.0) * r_local; //SD: -1.0 is the angular velocity of the frame
-	 phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
+	       Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
+	       inner_sqrt = std::max(inner_sqrt, 0.0);
+	       Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
+	       vtheta = (vtheta/r_local - 1.0) * r_local; //SD: -1.0 is the angular velocity of the frame
+	       phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
                                 //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
          phydro->u(IM3,k,j,i) = 0.0;
          // adding pressure from Chan et al; eq 13/14
