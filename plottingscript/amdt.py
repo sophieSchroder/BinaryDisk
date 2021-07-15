@@ -25,8 +25,8 @@ rc('font',family='serif',size=12)
 #################
 
 #read in initial conditions
-GM1 = 0.7692307692307692 
-GM2 = 0.2307692307692307
+GM1 = 0.16666667
+GM2 = 0.83333333
 PI = 6.283185307179586/2
 Omega = 1.0
 
@@ -44,23 +44,23 @@ ax1 = fig.add_subplot(spec[0,1])
 
 
 #reading angular momentum
-def readam(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+def readam(frame2):
+    # #change file names here accordingly
+    # if i < 10:
+    #     name = 'BDstream.out1.0000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
+    # elif i >=100:
+    #     name = 'BDstream.out1.00'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.00'+str(i)+'.athdf'
+    # else:
+    #     name = 'BDstream.out1.000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.000'+str(i)+'.athdf'
 
-    frame = athdf(name)
-    frame2 = athdf(name2)
-    time = frame['Time']
+    # frame = athdf(name)
+    # frame2 = athdf(name2)
+    time = frame2['Time']
     
-    Radius = frame['x1v']
+    Radius = frame2['x1v']
 
     AM = np.sum(frame2['user_out_var6'][0,:,:], axis=0)
     AM_net = np.sum(frame2['user_out_var11'][0,:,:], axis=0)
@@ -68,47 +68,47 @@ def readam(i):
         
     return [Radius, AM, time, AM_net, AM_nc]
 
-def intammdot(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+def intammdot(frame2):
+    # #change file names here accordingly
+    # if i < 10:
+    #     name = 'BDstream.out1.0000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
+    # elif i >=100:
+    #     name = 'BDstream.out1.00'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.00'+str(i)+'.athdf'
+    # else:
+    #     name = 'BDstream.out1.000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.000'+str(i)+'.athdf'
 
-    frame = athdf(name)
-    frame2 = athdf(name2)
+    # frame = athdf(name)
+    # frame2 = athdf(name2)
 
-    time = frame['Time']
+    time = frame2['Time']
     
-    Radius = frame['x1v']
+    Radius = frame2['x1v']
     dR = np.gradient(Radius)
     AMMdot = np.sum(frame2['user_out_var16'][0,:,:], axis=0)
 
     return [Radius,AMMdot]
 
 
-def intamfh(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+def intamfh(frame2):
+    # #change file names here accordingly
+    # if i < 10:
+    #     name = 'BDstream.out1.0000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
+    # elif i >=100:
+    #     name = 'BDstream.out1.00'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.00'+str(i)+'.athdf'
+    # else:
+    #     name = 'BDstream.out1.000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.000'+str(i)+'.athdf'
 
-    frame = athdf(name)
-    frame2 = athdf(name2)
-    time = frame['Time']
+    # frame = athdf(name)
+    # frame2 = athdf(name2)
+    time = frame2['Time']
     
-    Radius = frame['x1v']
+    Radius = frame2['x1v']
     dR = np.gradient(Radius)
     amfh = np.sum(frame2['user_out_var17'][0,:,:], axis=0)
     amth_net = np.sum(frame2['user_out_var18'][0,:,:], axis=0)
@@ -118,24 +118,24 @@ def intamfh(i):
 
 
 
-def inttorque(i):
-    #change file names here accordingly
-    if i < 10:
-        name = 'BDstream.out1.0000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
-    elif i >=100:
-        name = 'BDstream.out1.00'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.00'+str(i)+'.athdf'
-    else:
-        name = 'BDstream.out1.000'+str(i)+'.athdf'
-        name2 = 'BDstream.out2.000'+str(i)+'.athdf'
+def inttorque(frame2):
+    # #change file names here accordingly
+    # if i < 10:
+    #     name = 'BDstream.out1.0000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.0000'+str(i)+'.athdf'
+    # elif i >=100:
+    #     name = 'BDstream.out1.00'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.00'+str(i)+'.athdf'
+    # else:
+    #     name = 'BDstream.out1.000'+str(i)+'.athdf'
+    #     name2 = 'BDstream.out2.000'+str(i)+'.athdf'
 
-    frame = athdf(name)
-    frame2 = athdf(name2)
+    # frame = athdf(name)
+    # frame2 = athdf(name2)
 
-    time = frame['Time']
+    time = frame2['Time']
     
-    Radius = frame['x1v']
+    Radius = frame2['x1v']
     dR = np.gradient(Radius)
     trr = np.sum(frame2['user_out_var19'][0,:,:], axis=0)
     trr2 = np.sum(frame2['user_out_var20'][0,:,:], axis=0)
@@ -143,7 +143,23 @@ def inttorque(i):
     return [Radius, trr,  trr2]
 
 
-def plotam_nonrotate(start, end, ax0):
+def plotam_nonrotate(start_idx, end_idx, ax0):
+    if start_idx< 10:
+        name_s = 'BDstream.out2.0000'+str(start_idx)+'.athdf'
+    elif start_idx >=100:
+        name_s = 'BDstream.out2.00'+str(start_idx)+'.athdf'
+    else:
+        name_s = 'BDstream.out2.000'+str(start_idx)+'.athdf'
+
+    if end_idx < 10:
+        name_e = 'BDstream.out2.0000'+str(end_idx)+'.athdf'
+    elif end_idx >=100:
+        name_e = 'BDstream.out2.00'+str(end_idx)+'.athdf'
+    else:
+        name_e = 'BDstream.out2.000'+str(end_idx)+'.athdf'
+
+    start = athdf(name_s)
+    end = athdf(name_e)
 
     rad_avg = readam(end)[0]
     dAM = readam(end)[4]-readam(start)[4]
@@ -172,12 +188,28 @@ def plotam_nonrotate(start, end, ax0):
 
     ax0.set_xlim(np.min(rad_avg), np.max(rad_avg))
     ax0.set_xlabel(r"R")
-    ax0.set_ylim(-1.5e-5, 1.5e-5)
+    #ax0.set_ylim(-1.5e-5, 1.5e-5)
     ax0.legend(loc='best', frameon=False)
     ax0.set_title("non-rotating frame")
 
 
-def plotam_rotate(start, end, ax0):
+def plotam_rotate(start_idx, end_idx, ax0):
+    if start_idx< 10:
+        name_s = 'BDstream.out2.0000'+str(start_idx)+'.athdf'
+    elif start_idx >=100:
+        name_s = 'BDstream.out2.00'+str(start_idx)+'.athdf'
+    else:
+        name_s = 'BDstream.out2.000'+str(start_idx)+'.athdf'
+
+    if end_idx < 10:
+        name_e = 'BDstream.out2.0000'+str(end_idx)+'.athdf'
+    elif end_idx >=100:
+        name_e = 'BDstream.out2.00'+str(end_idx)+'.athdf'
+    else:
+        name_e = 'BDstream.out2.000'+str(end_idx)+'.athdf'
+
+    start = athdf(name_s)
+    end = athdf(name_e)
 
     rad_avg = readam(end)[0]
     dAM = readam(end)[1]-readam(start)[1]
@@ -201,13 +233,12 @@ def plotam_rotate(start, end, ax0):
 
     ax0.set_xlim(np.min(rad_avg), np.max(rad_avg))
     ax0.set_xlabel(r"R")
-    ax0.set_ylim(-1.5e-5, 1.5e-5)
+    #ax0.set_ylim(-1.e-6, 1.5e-5)
     ax0.legend(loc='best', frameon=False)
     ax0.set_title("co-rotating frame")
 
 
-plotam_nonrotate(45,20,ax0)
-plotam_rotate(45,20,ax1)
+plotam_nonrotate(100,75,ax0)
+plotam_rotate(100,75,ax1)
+#plt.savefig("AMdt_h01.png")
 plt.show()
-#plt.savefig("AMdt_.png")
-
