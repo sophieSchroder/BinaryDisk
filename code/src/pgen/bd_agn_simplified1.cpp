@@ -127,7 +127,7 @@ int gradual_m2; // flag for turning on gravity of m2 slowly
 int n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
 Real Omega[3];  // vector rotation of the frame
-Real ecc, sma;
+Real ecc, sma, alpha; // alpha is the angle of inclination of the secondary's orbit
 
 int particle_accrete;
 Real mdot, pdot[3]; // accretion parameters
@@ -191,6 +191,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   // local vars
   sma = pin->GetOrAddReal("problem","sma",2.0); //semi-major axis
   ecc = pin->GetOrAddReal("problem","ecc",0.0);
+  alpha = pin->GetOrAddReal("problem","alpha",0.0);
   Real Omega_orb, vcirc;
 
 
@@ -266,10 +267,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
       std::cout << "*** Setting initial conditions for t=0 ***\n";
     }
 
-    // set the initial conditions for the pos/vel of the secondary
-    xi[0] = sma*(1.0 + ecc);  // apocenter
+    // set the initial conditions for the pos/vel of the secondary with incl.
+    // alpha is degree of inclination
+    xi[0] = sma*(1.0 + ecc)*cos(alpha);  // apocenter
     xi[1] = 0.0;
-    xi[2] = 0.0;
+    xi[2] = sma*(1.0 + ecc)*sin(alpha); // will be zero if alpha = 0
+
 
     vcirc = sqrt((GM1+GM2)/sma);
     Omega_orb = vcirc/sma;
@@ -844,7 +847,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 	       Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
 	       inner_sqrt = std::max(inner_sqrt, 0.0);
 	       Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
-	       vtheta = (vtheta/r_local - 1.0) * r_local; //SD: -1.0 is the angular velocity of the frame
+         // if we're in a corotating frame, subtract off angular velocity of the frame
+         if (corotating_frame==1){
+           vtheta = (vtheta/r_local - 1.0) * r_local; // -1.0 is the angular velocity of the frame
+         } else {
+           vtheta = (vtheta/r_local) * r_local;
+         }
 	       phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
                                 //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
          phydro->u(IM3,k,j,i) = 0.0;
