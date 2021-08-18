@@ -324,12 +324,12 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     std::cout << "a = "<< sma <<"\n";
     std::cout << "e = "<< ecc <<"\n";
     std::cout << "P = "<< 6.2832*sqrt(sma*sma*sma/(GM1+GM2)) << "\n";
-    std::cout << "rsoft2 ="<<rsoft2<<"\n";
-    std::cout << "alpha ="<<alpha<<"\n";
+    std::cout << "rsoft2 = "<<rsoft2<<"\n";
+    std::cout << "alpha = "<<alpha<<"\n";
     std::cout << "corotating frame? = "<< corotating_frame<<"\n";
     std::cout << "gas backreaction? = "<< include_gas_backreaction<<"\n";
-    std::cout << "particle substeping n="<<n_particle_substeps<<"\n";
-    std::cout << "gradual m2?"<<gradual_m2<<"\n";
+    std::cout << "particle substeping n = "<<n_particle_substeps<<"\n";
+    std::cout << "gradual m2? = "<<gradual_m2<<"\n";
     if(time==0){
       std::cout << "==========================================================\n";
       std::cout << "==========   Particle        =============================\n";
