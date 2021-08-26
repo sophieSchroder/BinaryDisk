@@ -1415,21 +1415,18 @@ void SumGasOnParticleAccels(Mesh *pm, Real (&xi)[3],Real (&ag1i)[3],Real (&ag2i)
 	  // cell mass dm
 	  Real dm = vol(i) * phyd->u(IDN,k,j,i);
 
-	  //coordinates
+	  //cylindrical coordinates
 	  Real r = pmb->pcoord->x1v(i);
-	  Real th= pmb->pcoord->x2v(j);
-	  Real ph= pmb->pcoord->x3v(k);
+	  Real ph = pmb->pcoord->x2v(j);
+	  Real z_cyl = pmb->pcoord->x3v(k);
 
-	    //get some angles
-	  Real sin_th = sin(th);
-	  Real cos_th = cos(th);
 	  Real sin_ph = sin(ph);
 	  Real cos_ph = cos(ph);
 
 	  // spherical polar coordinates, get local cartesian
-	  Real x = r*sin_th*cos_ph;
-	  Real y = r*sin_th*sin_ph;
-	  Real z = r*cos_th;
+	  Real x = r*cos_ph;
+	  Real y = r*sin_ph;
+	  Real z_cart = z_cyl;
 
 	  // current position of the secondary
 	  Real x_2 = xi[0];
@@ -1438,7 +1435,7 @@ void SumGasOnParticleAccels(Mesh *pm, Real (&xi)[3],Real (&ag1i)[3],Real (&ag2i)
 
 	  Real d2 = sqrt(pow(x-x_2, 2) +
 			 pow(y-y_2, 2) +
-			 pow(z-z_2, 2) );
+			 pow(z_cart-z_2, 2) );
 
 	  Real d1c = pow(r,3);
 
@@ -1446,11 +1443,11 @@ void SumGasOnParticleAccels(Mesh *pm, Real (&xi)[3],Real (&ag1i)[3],Real (&ag2i)
 
 	  ag1i[0] += Ggrav*dm/d1c * x;
 	  ag1i[1] += Ggrav*dm/d1c * y;
-	  ag1i[2] += Ggrav*dm/d1c * z;
+	  ag1i[2] += Ggrav*dm/d1c * z_cart;
 
 	  ag2i[0] += Ggrav*dm * fspline(d2,rsoft2) * (x-x_2);
 	  ag2i[1] += Ggrav*dm * fspline(d2,rsoft2) * (y-y_2);
-	  ag2i[2] += Ggrav*dm * fspline(d2,rsoft2) * (z-z_2);
+	  ag2i[2] += Ggrav*dm * fspline(d2,rsoft2) * (z_cart-z_2);
 
 	}
       }
