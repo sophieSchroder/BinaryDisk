@@ -1573,7 +1573,8 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
         Real v_kep = SQR(GM1/r_local);
         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
         prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
-        prim(IVX,k,j,ie+i) = 0.0;
+        //prim(IVX,k,j,ie+i) = 0.0; //removed just to test line below CHANGE BACK
+        prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
         prim(IVY,k,j,ie+i) = (pow(v_kep,2) - (0.5*pow(v_kep*z_local/r_local,2)
                                               +pow(scale_h*v_kep,2)));
         prim(IVZ,k,j,ie+i) = 0.0;
