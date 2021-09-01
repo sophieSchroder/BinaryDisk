@@ -1570,11 +1570,10 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
         // set disk conditions in ghost cells to fill disk
         Real r_local = pco->x1v(ie+i); // ask XH: is this r coord? what is ie+i
         Real z_local = pco->x3v(ie+i); //pco vs pcoord?
-        Real v_kep = SQR(GM1/r_local);
+        Real v_kep = sqrt(GM1/r_local);
         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
         prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
-        //prim(IVX,k,j,ie+i) = 0.0; //removed just to test line below CHANGE BACK
-        prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
+        prim(IVX,k,j,ie+i) = 0.0; 
         prim(IVY,k,j,ie+i) = (pow(v_kep,2) - (0.5*pow(v_kep*z_local/r_local,2)
                                               +pow(scale_h*v_kep,2)));
         prim(IVZ,k,j,ie+i) = 0.0;
