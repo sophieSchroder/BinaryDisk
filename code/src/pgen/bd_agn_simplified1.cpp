@@ -447,48 +447,9 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 			pow(y-y_2, 2) +
 			pow(z_cart-z_2, 2) );
 
-	//compute the direct gravitational potential
-	Real gravphi = -GM1/r - GM2/d2;
-	//add the indirec term to grav potential due to the orbiting frame
-	gravphi += GM2*(x_2*x+y_2*y+z_cart*z_2)/pow(d12c, 2);
-	pmb->pmy_mesh->ruser_mesh_data[4](0,k,j,i) = gravphi; //store the grav potential
-
-	//XS: Sophie, please check this part of code, which follows the calculation in Wendy's thesis Eq 2.3, 2.4 (ab)
-
-	/*check grav force by differencing potential*/
-	/*phi(R+dr, phi) = gravphi_l, phi(r-dr, phi) = gravphi_r, phi(R, phi+dphi) = gravphi_u, phi(R, phi-dphi) = gravphi_d*/
-
-	// phi(R+dr, phi)
-	Real x_l = r_p*cos_ph;
-	Real y_l = r_p*sin_ph;
 	Real zcart_l = z_cyl;
-	Real d2_l  = sqrt(pow(x_l-x_2, 2) + pow(y_l-y_2, 2) + pow(zcart_l-z_2, 2));
-	Real gravphi_l = -GM1/r_p - GM2/d2_l + GM2*(x_2*x_l+y_2*y_l+zcart_l*z_2)/pow(d12c, 2);
 
-	// phi(R-dr, phi)
-	Real x_r = r_m*cos_ph;
-	Real y_r = r_m*sin_ph;
-	Real zcart_r = z_cyl;
-	Real d2_r  = sqrt(pow(x_r-x_2, 2) + pow(y_r-y_2, 2) + pow(zcart_r-z_2, 2));
-	Real gravphi_r = -GM1/r_m - GM2/d2_r + GM2*(x_2*x_r+y_2*y_r+zcart_r*z_2)/pow(d12c, 2);
-
-	// phi(R, phi+dphi)
-	Real x_u = r*cos_ph_p;
-	Real y_u = r*sin_ph_p;
-	Real zcart_u = z_cyl;
-	Real d2_u = sqrt(pow(x_u-x_2, 2) + pow(y_u-y_2, 2) + pow(zcart_u-z_2, 2));
-	Real gravphi_u = -GM1/r - GM2/d2_u + GM2*(x_2*x_u+y_2*y_u+zcart_u*z_2)/pow(d12c, 2);
-
-	// phi(R, phi-dphi)
-	Real x_d = r*cos_ph_m;
-	Real y_d = r*sin_ph_m;
-	Real zcart_d = z_cyl;
-	Real d2_d = sqrt(pow(x_d-x_2, 2) + pow(y_d-y_2, 2) + pow(zcart_d-z_2, 2));
-	Real gravphi_d = -GM1/r - GM2/d2_d + GM2*(x_2*x_d+y_2*y_d+zcart_d*z_2)/pow(d12c, 2);
-
-
-
-
+	
 	//
 	//  COMPUTE ACCELERATIONS
 	//
