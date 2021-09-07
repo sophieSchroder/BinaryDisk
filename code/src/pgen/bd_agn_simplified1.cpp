@@ -306,7 +306,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 
   }else{
-    change_setup = pin->GetOrAddReal("problem", "change_setup", 0);
     is_restart=1;
   }
 
@@ -328,7 +327,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     std::cout << "alpha = "<<alpha<<"\n";
     std::cout << "corotating frame? = "<< corotating_frame<<"\n";
     std::cout << "gas backreaction? = "<< include_gas_backreaction<<"\n";
-    std::cout << "particle substeping n = "<<n_particle_substeps<<"\n";
+    std::cout << "particle substepping n = "<<n_particle_substeps<<"\n";
     std::cout << "gradual m2? = "<<gradual_m2<<"\n";
     if(time==0){
       std::cout << "==========================================================\n";
@@ -358,7 +357,7 @@ int RefinementCondition(MeshBlock *pmb)
   Real mindist=1.e10;
   for(int k=pmb->ks; k<=pmb->ke; k++){
 
-    Real ph= pmb->pcoord->x2v(k);
+    Real ph = pmb->pcoord->x2v(k);
     Real sin_ph = sin(ph);
     Real cos_ph = cos(ph);
 
@@ -383,7 +382,7 @@ int RefinementCondition(MeshBlock *pmb)
     }
   }
   if(mindist >  3.0*rsoft2) return -1;
-  if(mindist <= 3.0*rsoft2) return 1;   // Do refinemt
+  if(mindist <= 3.0*rsoft2) return 1;   // Do refinement
 }
 
 
@@ -417,11 +416,6 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
     for (int j=pmb->js; j<=pmb->je; j++) {
       for (int i=pmb->is; i<=pmb->ie; i++) {
 
-	/*check grav force by differencing potential*/
-	//get deltaR, deltaphi
-	Real deltar = (1.0/1000)*pmb->pcoord->GetEdge1Length(k,j,i);
-	Real deltaphi = (1.0/1000)*pmb->pcoord->GetEdge2Length(k,j,i);
-
 	Real r = pmb->pcoord->x1v(i);
 	Real ph= pmb->pcoord->x2v(j);
 	Real z_cyl = pmb->pcoord->x3v(k);
@@ -430,25 +424,12 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real vph = prim(IVY,k,j,i);
 	Real vz_cyl  = prim(IVZ,k,j,i);
 
-	/*check grav force by differencing potential*/
-	Real r_p = r+deltar;
-	Real r_m = r-deltar;
-	Real ph_p = ph+deltaphi;
-	Real ph_m = ph-deltaphi;
-
 	//get some angles
 	Real sin_ph = sin(ph);
 	Real cos_ph = cos(ph);
 	//Real z_r_ang = atan2(z_cyl,r); //XH atan2 inclues the sign
 	Real cos_zr = r/sqrt(r*r+z_cyl*z_cyl);
 	Real sin_zr = z_cyl/sqrt(r*r+z_cyl*z_cyl);
-
-	/*check grav force by differencing potential*/
-	Real sin_ph_p = sin(ph_p);
-	Real cos_ph_p = cos(ph_p);
-	Real sin_ph_m = sin(ph_m);
-	Real cos_ph_m = cos(ph_m);
-
 
 	// current position of the secondary
 	Real x_2 = xi[0];
@@ -505,13 +486,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	Real d2_d = sqrt(pow(x_d-x_2, 2) + pow(y_d-y_2, 2) + pow(zcart_d-z_2, 2));
 	Real gravphi_d = -GM1/r - GM2/d2_d + GM2*(x_2*x_d+y_2*y_d+zcart_d*z_2)/pow(d12c, 2);
 
-	// finite differencing derivative
-	// Fgrav_R = - (rho*/2deltaR)*(gravphi_l-gravphi_r)
-	Real F_grav_R = - (prim(IDN,k,j,i)/(2*deltar))*(gravphi_l - gravphi_r);
-	pmb->pmy_mesh->ruser_mesh_data[4](1,k,j,i) = F_grav_R;
-	// Fgrav_phi = - (rho/2*R*deltaPhi)*(gravphi_u - grav_phi_d)
-	Real F_grav_phi = - (prim(IDN,k,j,i)/(2*r*deltaphi))*(gravphi_u - gravphi_d);
-	pmb->pmy_mesh->ruser_mesh_data[4](2,k,j,i) = F_grav_phi;
+
 
 
 	//
@@ -1573,7 +1548,7 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
         Real v_kep = sqrt(GM1/r_local);
         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
         prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
-        prim(IVX,k,j,ie+i) = 0.0; 
+        prim(IVX,k,j,ie+i) = 0.0;
         prim(IVY,k,j,ie+i) = (pow(v_kep,2) - (0.5*pow(v_kep*z_local/r_local,2)
                                               +pow(scale_h*v_kep,2)));
         prim(IVZ,k,j,ie+i) = 0.0;
@@ -1645,7 +1620,13 @@ void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
       for (int i=1; i<=(NGHOST); ++i) {//R
 	  prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
 	  prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
-	  prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
+    if (corotating_frame==1){
+       // last term subtracts the angular velocity of the frame
+       prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
+    } else {
+       // SD: confirm this is correct below
+       prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3)));
+    }
 	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
 	  if (NON_BAROTROPIC_EOS){
 	    prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
