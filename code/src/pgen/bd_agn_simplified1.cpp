@@ -449,7 +449,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 
 	Real zcart_l = z_cyl;
 
-	
+
 	//
 	//  COMPUTE ACCELERATIONS
 	//
@@ -1508,15 +1508,28 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
         Real z_local = pco->x3v(ie+i); //pco vs pcoord?
         Real v_kep = sqrt(GM1/r_local);
         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
-        prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
+        //prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
+        prim(IDN,k,j,ie+i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: simplified version
         prim(IVX,k,j,ie+i) = 0.0;
-        prim(IVY,k,j,ie+i) = (pow(v_kep,2) - (0.5*pow(v_kep*z_local/r_local,2)
-                                              +pow(scale_h*v_kep,2)));
+        //prim(IVY,k,j,ie+i) = (pow(v_kep,2) - (0.5*pow(v_kep*z_local/r_local,2)
+        //                                      +pow(scale_h*v_kep,2)));
+        // why is the velocity above squared? essentially above is IM2 from pgen but squared...
+        // replacing it below with pgen version
+        Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
+        inner_sqrt = std::max(inner_sqrt, 0.0);
+        Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
+        // if we're in a corotating frame, subtract off angular velocity of the frame
+        if (corotating_frame==1){
+          vtheta = (vtheta/r_local - 1.0) * r_local; // -1.0 is the angular velocity of the frame
+        } else {
+          vtheta = (vtheta/r_local) * r_local;
+        }
+        prim(IVY,k,j,ie+i) = vtheta;
         prim(IVZ,k,j,ie+i) = 0.0;
 
         if (NON_BAROTROPIC_EOS) {
-      	     prim(IPR,k,j,ie+i) = prim(IDN,k,j,ie+i)*pow(scale_h*v_kep,2);
-      	}
+             prim(IPR,k,j,ie+i) = prim(IDN,k,j,ie+i)*pow(scale_h*v_kep,2);
+        }
 
 
 
