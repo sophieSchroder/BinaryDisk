@@ -350,40 +350,40 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 
 
-
+// SD: If we want to use AMR for our setup need to modify this
 // Softening condition for the companion
-int RefinementCondition(MeshBlock *pmb)
-{
-  Real mindist=1.e10;
-  for(int k=pmb->ks; k<=pmb->ke; k++){
-
-    Real ph = pmb->pcoord->x2v(k);
-    Real sin_ph = sin(ph);
-    Real cos_ph = cos(ph);
-
-    for(int j=pmb->js; j<=pmb->je; j++) {
-
-      Real z_cyl= pmb->pcoord->x3v(j);
-
-      for(int i=pmb->is; i<=pmb->ie; i++) {
-
-	       Real r = pmb->pcoord->x1v(i);
-
-	       Real x = r*cos_ph;
-	       Real y = r*sin_ph;
-	       Real z_cart = z_cyl; // z in cartesian
-
-	       Real dist = std::sqrt(SQR(x-xi[0]) +
-			      SQR(y-xi[1]) +
-			      SQR(z_cart-xi[2]) );
-
-	       mindist = std::min(mindist,dist);
-      }
-    }
-  }
-  if(mindist >  3.0*rsoft2) return -1;
-  if(mindist <= 3.0*rsoft2) return 1;   // Do refinement
-}
+// int RefinementCondition(MeshBlock *pmb)
+// {
+//   Real mindist=1.e10;
+//   for(int k=pmb->ks; k<=pmb->ke; k++){
+//
+//     Real ph = pmb->pcoord->x2v(k);
+//     Real sin_ph = sin(ph);
+//     Real cos_ph = cos(ph);
+//
+//     for(int j=pmb->js; j<=pmb->je; j++) {
+//
+//       Real z_cyl= pmb->pcoord->x3v(j);
+//
+//       for(int i=pmb->is; i<=pmb->ie; i++) {
+//
+// 	       Real r = pmb->pcoord->x1v(i);
+//
+// 	       Real x = r*cos_ph;
+// 	       Real y = r*sin_ph;
+// 	       Real z_cart = z_cyl; // z in cartesian
+//
+// 	       Real dist = std::sqrt(SQR(x-xi[0]) +
+// 			      SQR(y-xi[1]) +
+// 			      SQR(z_cart-xi[2]) );
+//
+// 	       mindist = std::min(mindist,dist);
+//       }
+//     }
+//   }
+//   if(mindist >  3.0*rsoft2) return -1;
+//   if(mindist <= 3.0*rsoft2) return 1;   // Do refinement
+// }
 
 
 
@@ -447,9 +447,6 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 			pow(y-y_2, 2) +
 			pow(z_cart-z_2, 2) );
 
-	Real zcart_l = z_cyl;
-
-
 	//
 	//  COMPUTE ACCELERATIONS
 	//
@@ -462,7 +459,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	// Real a_r1 = -GM1/(r*r+z*z); //for not using cell-volume averaged quantities <1/r>, just use r*r+z*z
 	//or
 	//Real a_r1 = -GM1/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2,
-  Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r;
+  Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r; // SD&SS: See about 3d version - need cyl + radial polar
   Real a_x, a_y, a_z_cart;
   if(gradual_m2 == 1 && pmb->pmy_mesh->time < 12.5664){ //and if time is less than 2 orbital periods (4pi)
     // PM2 gravitational accels in cartesian coordinates
@@ -483,7 +480,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//store net external acceleration to user variable
 	Real a_r_net = a_r1*cos_zr + cos_ph*a_x + sin_ph*a_y;
 	Real a_ph_net = -sin_ph*a_x + cos_ph*a_y;
-	Real a_z_net = a_z_cart;
+	Real a_z_net = a_z_cart; //need spherical part? from a_r1?
 
   // get density of cell
 	Real den = prim(IDN,k,j,i);
