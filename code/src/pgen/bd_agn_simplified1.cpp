@@ -352,38 +352,38 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 // SD: If we want to use AMR for our setup need to modify this
 // Softening condition for the companion
-// int RefinementCondition(MeshBlock *pmb)
-// {
-//   Real mindist=1.e10;
-//   for(int k=pmb->ks; k<=pmb->ke; k++){
-//
-//     Real ph = pmb->pcoord->x2v(k);
-//     Real sin_ph = sin(ph);
-//     Real cos_ph = cos(ph);
-//
-//     for(int j=pmb->js; j<=pmb->je; j++) {
-//
-//       Real z_cyl= pmb->pcoord->x3v(j);
-//
-//       for(int i=pmb->is; i<=pmb->ie; i++) {
-//
-// 	       Real r = pmb->pcoord->x1v(i);
-//
-// 	       Real x = r*cos_ph;
-// 	       Real y = r*sin_ph;
-// 	       Real z_cart = z_cyl; // z in cartesian
-//
-// 	       Real dist = std::sqrt(SQR(x-xi[0]) +
-// 			      SQR(y-xi[1]) +
-// 			      SQR(z_cart-xi[2]) );
-//
-// 	       mindist = std::min(mindist,dist);
-//       }
-//     }
-//   }
-//   if(mindist >  3.0*rsoft2) return -1;
-//   if(mindist <= 3.0*rsoft2) return 1;   // Do refinement
-// }
+ int RefinementCondition(MeshBlock *pmb)
+ {
+   Real mindist=1.e10;
+   for(int k=pmb->ks; k<=pmb->ke; k++){
+
+     Real ph = pmb->pcoord->x2v(k);
+     Real sin_ph = sin(ph);
+     Real cos_ph = cos(ph);
+
+     for(int j=pmb->js; j<=pmb->je; j++) {
+
+       Real z_cyl= pmb->pcoord->x3v(j);
+
+       for(int i=pmb->is; i<=pmb->ie; i++) {
+
+ 	       Real r = pmb->pcoord->x1v(i);
+
+ 	       Real x = r*cos_ph;
+ 	       Real y = r*sin_ph;
+ 	       Real z_cart = z_cyl; // z in cartesian
+
+ 	       Real dist = std::sqrt(SQR(x-xi[0]) +
+ 			      SQR(y-xi[1]) +
+ 			      SQR(z_cart-xi[2]) );
+
+ 	       mindist = std::min(mindist,dist);
+       }
+     }
+   }
+   if(mindist >  3.0*rsoft2) return -1;
+   if(mindist <= 3.0*rsoft2) return 1;   // Do refinement
+ }
 
 
 
