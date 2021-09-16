@@ -459,7 +459,8 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	// Real a_r1 = -GM1/(r*r+z*z); //for not using cell-volume averaged quantities <1/r>, just use r*r+z*z
 	//or
 	//Real a_r1 = -GM1/(pow(1./pmb->pcoord->coord_src1_i_(i),2)+z_cyl*z_cyl); //use cell-volume averaged r, (1./<1/r>)^2+z^2,
-  Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r; // SD&SS: See about 3d version - need cyl + radial polar
+  // Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r; // SD&SS: See about 3d version - need cyl + radial polar
+  Real a_r1 = -GM1/(r*(1./pmb->pcoord->coord_src1_i_(i))+z_cyl*z_cyl); //use cell-volume averaged r (1/src_1) and avg r length, r
   Real a_x, a_y, a_z_cart;
   if(gradual_m2 == 1 && pmb->pmy_mesh->time < 12.5664){ //and if time is less than 2 orbital periods (4pi)
     // PM2 gravitational accels in cartesian coordinates
@@ -480,7 +481,7 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	//store net external acceleration to user variable
 	Real a_r_net = a_r1*cos_zr + cos_ph*a_x + sin_ph*a_y;
 	Real a_ph_net = -sin_ph*a_x + cos_ph*a_y;
-	Real a_z_net = a_z_cart; //need spherical part? from a_r1?
+	Real a_z_net = a_z_cart + a_r1*sin_zr;
 
   // get density of cell
 	Real den = prim(IDN,k,j,i);
