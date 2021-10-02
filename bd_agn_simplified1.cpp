@@ -226,6 +226,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
   //Enroll history dump
   AllocateUserHistoryOutput(2);
+  //SetUserOutputVariableName(0, "sth");
   EnrollUserHistoryOutput(0,massfluxix1,"massfluxix1");//mass flux inner
   EnrollUserHistoryOutput(1,massfluxox1,"massfluxox1");//mass flux outer
 
