@@ -544,9 +544,9 @@ void HydroDiffusion::ViscousFluxAniso(const AthenaArray<Real> &prim,
         for (int i=il; i<=iu; i++) {
           nu1  = 0.5*(nu(DiffProcess::aniso,k,j,i)    + nu(DiffProcess::iso,k,j-1,i));
           denf = 0.5*(prim(IDN,k,j-1,i)+ prim(IDN,k,j,i));
-	  //XS: only include phi-direction momentum accroos phi-direction face
-          flx1 = 0.0;//-denf*nu1*fx_(i);
-          flx2 = -denf*nu1*(fy_(i) + nuiso2*0.5*(div_vel_(k,j-1,i) + div_vel_(k,j,i)));
+	  //XS: tau_phiphi=0, 
+          flx1 = -denf*nu1*fx_(i);
+          flx2 = 0.0; //-denf*nu1*(fy_(i) + nuiso2*0.5*(div_vel_(k,j-1,i) + div_vel_(k,j,i)));
           flx3 = 0.0;//-denf*nu1*fz_(i);
           x2flux(IM1,k,j,i) += flx1;
           x2flux(IM2,k,j,i) += flx2;
