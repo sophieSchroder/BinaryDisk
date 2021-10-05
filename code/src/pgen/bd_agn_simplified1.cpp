@@ -563,8 +563,6 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
 	cons(IM2,k,j,i) += src_2;
 	cons(IM3,k,j,i) += src_3;
 
-  // SAD & SS: do we want to add this in non-corotating part above?
-
 	pmb->pmy_mesh->ruser_mesh_data[3](3,k,j,i) = 0.0;
 	if (NON_BAROTROPIC_EOS) {
 	  // update the energy (source = - rho v dot a
@@ -633,15 +631,6 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	user_out_var(3,k,j,i) = pmy_mesh->ruser_mesh_data[3](7,k,j,i);//cons, fext_r, no corotate
 	user_out_var(4,k,j,i) = pmy_mesh->ruser_mesh_data[3](8,k,j,i);//cons, fext_theta, no corotate
 	user_out_var(5,k,j,i) = pmy_mesh->ruser_mesh_data[3](9,k,j,i);//cons, fext_z, no corotate
-
-	//F_grav,r = -(rho/2dR)*(phi(i+1,j)-phi(i-1,j))
-        //Real gradphi_r = -(rho/(2*deltaR))*(pmy_mesh->ruser_mesh_data[4](0,k,j,i+1)-pmy_mesh->ruser_mesh_data[4](0,k,j,i-1));
-	//user_out_var(15,k,j,i) = gradphi_r;
-
-	//F_grav,phi = -(rho/2R*deltaPhi)*(phi(i,j+1)-phi(i,j-1))
-	//Real gradphi_phi = -(rho/(2*Rad*deltaphi))*(pmy_mesh->ruser_mesh_data[4](0,k,j+1,i)-pmy_mesh->ruser_mesh_data[4](0,k,j-1,i));
-	//user_out_var(16,k,j,i) = gradphi_phi;
-
 
 	//AM check, zonal average
         //cell center variables
@@ -728,23 +717,12 @@ void MeshBlock::UserWorkBeforeOutput(ParameterInput *pin){
 	user_out_var(33,k,j,i) = pmy_mesh->ruser_mesh_data[6](9,k,j,i);
 
       }
-
-
     }
   }
-
-
-
 }
 
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin) {
-  Real rad(0.0), phi(0.0), z(0.0);
-  Real v1(0.0), v2(0.0), v3(0.0);
-
-  // local vars for background - not implemented
-  //Real den, pres;
-
 
 	// Prepare index bounds including ghost cells
   int il = is - NGHOST;
@@ -760,11 +738,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   if (block_size.nx3 > 1) {
 	  kl -= (NGHOST);
 	  ku += (NGHOST);
-  }
-
-  Real rho_floor = pin->GetReal("hydro", "dfloor");
-  if (NON_BAROTROPIC_EOS){
-    rho_floor = 1.0e-5;
   }
 
   Real press_init;
