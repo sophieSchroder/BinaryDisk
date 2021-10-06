@@ -57,7 +57,7 @@ void SumGasOnParticleAccels(Mesh *pm, Real (&xi)[3],Real (&ag1i)[3], Real (&ag2i
 void particle_step(Real dt,Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]);
 void kick(Real dt,Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]);
 void drift(Real dt,Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]);
-int RefinementCondition(MeshBlock *pmb);
+// int RefinementCondition(MeshBlock *pmb);
 
 void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]);
 
@@ -68,24 +68,6 @@ Real fspline(Real r, Real eps);
 void ParticleAccrete(Mesh *pm, Real(&xi)[3],Real(&vi)[3],Real(&mdot), Real(&pdot)[3]);
 
 // User-defined boundary conditions for disk simulations
-void DiskInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh);
-void DiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh);
-void DiskInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh);
-void DiskOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh);
-void DiskInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh);
-void DiskOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt,
-                 int il, int iu, int jl, int ju, int kl, int ku, int ngh);
 
 void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 			int is, int ie, int js, int je, int ks, int ke, int ngh);
@@ -94,6 +76,12 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
 		      int is, int ie, int js, int je, int ks, int ke, int ngh);
 
 void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+		      int is, int ie, int js, int je, int ks, int ke, int ngh);
+
+void OutflowInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
+		      int is, int ie, int js, int je, int ks, int ke, int ngh);
+
+void OutflowOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh);
 
 
@@ -213,21 +201,28 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   }
 
   if (mesh_bcs[BoundaryFace::outer_x1] == GetBoundaryFlag("user")) {
-    if (change_setup==0){
-      EnrollUserBoundaryFunction(BoundaryFace::outer_x1, AGNDiskOuterX1);
-    }else{
+    //if (change_setup==0){
+    //  EnrollUserBoundaryFunction(BoundaryFace::outer_x1, AGNDiskOuterX1);
+    //}else{
       EnrollUserBoundaryFunction(BoundaryFace::outer_x1, OutflowOuterX1);
-    }
+    //  }
   }
 
+  if (mesh_bcs[BoundaryFace::inner_x3] == GetBoundaryFlag("user")) {
+    EnrollUserBoundaryFunction(BoundaryFace::inner_x3, OutflowInnerX3);
+  }
+
+  if (mesh_bcs[BoundaryFace::outer_x3] == GetBoundaryFlag("user")) {
+    EnrollUserBoundaryFunction(BoundaryFace::outer_x3, OutflowOuterX3);
+  }
 
   // Enroll (do) a Source Function
   // This is the function that makes the gravitational of SMBH and companion
   EnrollUserExplicitSourceFunction(TwoPointMass);
 
   // Enroll AMR
-  if(adaptive==true)
-    EnrollUserRefinementCondition(RefinementCondition);
+  //if(adaptive==true)
+  //  EnrollUserRefinementCondition(RefinementCondition);
 
   //Enroll history dump
   AllocateUserHistoryOutput(2);
@@ -352,38 +347,38 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 // SD: If we want to use AMR for our setup need to modify this
 // Softening condition for the companion
- int RefinementCondition(MeshBlock *pmb)
- {
-   Real mindist=1.e10;
-   for(int k=pmb->ks; k<=pmb->ke; k++){
-
-     Real ph = pmb->pcoord->x2v(k);
-     Real sin_ph = sin(ph);
-     Real cos_ph = cos(ph);
-
-     for(int j=pmb->js; j<=pmb->je; j++) {
-
-       Real z_cyl= pmb->pcoord->x3v(j);
-
-       for(int i=pmb->is; i<=pmb->ie; i++) {
-
- 	       Real r = pmb->pcoord->x1v(i);
-
- 	       Real x = r*cos_ph;
- 	       Real y = r*sin_ph;
- 	       Real z_cart = z_cyl; // z in cartesian
-
- 	       Real dist = std::sqrt(SQR(x-xi[0]) +
- 			      SQR(y-xi[1]) +
- 			      SQR(z_cart-xi[2]) );
-
- 	       mindist = std::min(mindist,dist);
-       }
-     }
-   }
-   if(mindist >  3.0*rsoft2) return -1;
-   if(mindist <= 3.0*rsoft2) return 1;   // Do refinement
- }
+ // int RefinementCondition(MeshBlock *pmb)
+ // {
+ //   Real mindist=1.e10;
+ //   for(int k=pmb->ks; k<=pmb->ke; k++){
+ //
+ //     Real ph = pmb->pcoord->x2v(k);
+ //     Real sin_ph = sin(ph);
+ //     Real cos_ph = cos(ph);
+ //
+ //     for(int j=pmb->js; j<=pmb->je; j++) {
+ //
+ //       Real z_cyl= pmb->pcoord->x3v(j);
+ //
+ //       for(int i=pmb->is; i<=pmb->ie; i++) {
+ //
+ // 	       Real r = pmb->pcoord->x1v(i);
+ //
+ // 	       Real x = r*cos_ph;
+ // 	       Real y = r*sin_ph;
+ // 	       Real z_cart = z_cyl; // z in cartesian
+ //
+ // 	       Real dist = std::sqrt(SQR(x-xi[0]) +
+ // 			      SQR(y-xi[1]) +
+ // 			      SQR(z_cart-xi[2]) );
+ //
+ // 	       mindist = std::min(mindist,dist);
+ //       }
+ //     }
+ //   }
+ //   if(mindist >  3.0*rsoft2) return -1;
+ //   if(mindist <= 3.0*rsoft2) return 1;   // Do refinement
+ // }
 
 
 
@@ -754,7 +749,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
          phydro->u(IDN,k,j,i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: change to simplified eq.
          phydro->u(IM1,k,j,i) = 0.0;
 	       Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
-	       inner_sqrt = std::max(inner_sqrt, 0.0);
+	       inner_sqrt = std::max(inner_sqrt, 1.0e-10);
 	       Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
          // if we're in a corotating frame, subtract off angular velocity of the frame
          if (corotating_frame==1){
@@ -946,7 +941,6 @@ void Mesh::UserWorkInLoop(){
 	ruser_mesh_data[6](9,k,j,i) += dt*(vtot/sqrt(cs2_c))*pcoord->dx2f(j);
 
       }//end phi
-
     }
   }
 }
@@ -1086,7 +1080,6 @@ void ParticleAccels(Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]){
       ai[i] += -agas1i[i]+agas2i[i];
     }
   }
-
 }
 
 
@@ -1104,7 +1097,6 @@ Real fspline(Real r, Real eps){
   } else{
     return pow(r,-3);
   }
-
 }
 
 
@@ -1392,70 +1384,6 @@ void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]){
 
 
 
-
-// //--------------------------------------------------------------------------------------
-// //! \fn void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-// //                         FaceField &b, Real time, Real dt,
-// //                         int is, int ie, int js, int je, int ks, int ke)
-// //  \brief OUTFLOW boundary conditions, outer x1 boundary
-//
-// void DiodeOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-// 		  FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh)
-// {
-//   // copy hydro variables into ghost zones, don't allow inflow
-//   for (int n=0; n<(NHYDRO); ++n) {
-//     if (n==(IVX)) {
-//       for (int k=ks; k<=ke; ++k) {
-// 	for (int j=js; j<=je; ++j) {
-// #pragma simd
-// 	  for (int i=1; i<=(NGHOST); ++i) {
-// 	    prim(IVX,k,j,ie+i) =  std::max( 0.0, prim(IVX,k,j,(ie-i+1)) );  // positive velocities only
-// 	  }
-// 	}}
-//     } else {
-//       for (int k=ks; k<=ke; ++k) {
-// 	for (int j=js; j<=je; ++j) {
-// #pragma simd
-// 	  for (int i=1; i<=(NGHOST); ++i) {
-// 	    prim(n,k,j,ie+i) = prim(n,k,j,(ie-i+1));
-// 	  }
-// 	}}
-//     }
-//   }
-//
-//
-//   // copy face-centered magnetic fields into ghost zones
-//   if (MAGNETIC_FIELDS_ENABLED) {
-//     for (int k=ks; k<=ke; ++k) {
-//       for (int j=js; j<=je; ++j) {
-// #pragma simd
-// 	for (int i=1; i<=(NGHOST); ++i) {
-// 	  b.x1f(k,j,(ie+i+1)) = b.x1f(k,j,(ie+1));
-// 	}
-//       }}
-//
-//     for (int k=ks; k<=ke; ++k) {
-//       for (int j=js; j<=je+1; ++j) {
-// #pragma simd
-// 	for (int i=1; i<=(NGHOST); ++i) {
-// 	  b.x2f(k,j,(ie+i)) = b.x2f(k,j,ie);
-// 	}
-//       }}
-//
-//     for (int k=ks; k<=ke+1; ++k) {
-//       for (int j=js; j<=je; ++j) {
-// #pragma simd
-// 	for (int i=1; i<=(NGHOST); ++i) {
-// 	  b.x3f(k,j,(ie+i)) = b.x3f(k,j,ie);
-// 	}
-//       }}
-//   }
-//
-//   return;
-// }
-
-
-
 void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 		      int is, int ie, int js, int je, int ks, int ke, int ngh){
   int L1flag = 0;
@@ -1478,7 +1406,7 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
         Real r_local = pco->x1v(ie+i); // ask XH: is this r coord? what is ie+i
         Real z_local = pco->x3v(ie+i); //pco vs pcoord?
         Real v_kep = sqrt(GM1/r_local);
-        Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
+        //Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
         //prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
         prim(IDN,k,j,ie+i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: simplified version
         prim(IVX,k,j,ie+i) = 0.0;
@@ -1503,31 +1431,6 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
         }
 
 
-
-
-	// if (phi_coord<=0.1 || (2*PI-phi_coord<=0.1)){// if within L1 point
-  //   // why do we call this prim instead of phydro->u? Ask XH
-	//   prim(IDN,k,j,ie+i) = local_dens;
-	//   prim(IVX,k,j,ie+i) = local_vr;
-	//   prim(IVY,k,j,ie+i) = 0.0; //pco->coord(ie+i)*sqrt(GM1/pow(sma,3)); //since we are in the corotating frame
-	//   prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
-  //
-	//   if (NON_BAROTROPIC_EOS) {
-	//     prim(IPR,k,j,ie+i) = local_press;
-	//   }
-  //
-	// }else{//one-direction outflow
-	//   prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
-	//   prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
-	//   prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
-	//   prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
-	//   if (NON_BAROTROPIC_EOS){
-	//     prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
-	//   }
-	// }
-
-
-
       }//end R
     }//end theta
   }//end Phi
@@ -1550,28 +1453,28 @@ void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
 	}
 
       }//end R
-    }//end theta
-  }//end Phi
+    }//end phi
+  }//end z
 
 
 }
 
 
-void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
-		    int is, int ie, int js, int je, int ks, int ke, int ngh){
+void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh){
   for (int k=ks; k<=ke; ++k) {//z
     for (int j=js; j<=je; ++j) {//phi
       Real phi_coord = pco->x2v(j);
       for (int i=1; i<=(NGHOST); ++i) {//R
 	  prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
 	  prim(IVX,k,j,ie+i) = std::max(0.0, prim(IVX,k,j,ie));
-    if (corotating_frame==1){
-       // last term subtracts the angular velocity of the frame
-       prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
-    } else {
-       // SD: confirm this is correct below
-       prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3)));
-    }
+	  prim(IVY,k,j,ie+i) = prim(IVY,k,j,ie);
+	  //if (corotating_frame==1){
+	  //  // last term subtracts the angular velocity of the frame
+	  //  prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3))-sqrt((GM1+GM2)/pow(sma,3)));
+	  //} else {
+	  //  // SD: confirm this is correct below
+	  //  prim(IVY,k,j,ie+i) = pco->x1v(ie+i)*(sqrt(GM1/pow(pco->x1v(ie+i),3)));
+	  //}
 	  prim(IVZ,k,j,ie+i) = prim(IVZ,k,j,ie);
 	  if (NON_BAROTROPIC_EOS){
 	    prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
@@ -1580,6 +1483,45 @@ void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
     }
   }
 }
+
+void OutflowInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh){
+  for (int k=1; k<=(NGHOST); ++k) {//z
+    for (int j=js; j<=je; ++j) {//phi
+      for (int i=is; i<=ie; ++i) {//R
+	prim(IDN,ks-k,j,i) = prim(IDN,ks,j,i);
+	prim(IVX,ks-k,j,i) = prim(IVX,ks,j,i);
+	prim(IVY,ks-k,j,i) = prim(IVY,ks,j,i);
+	prim(IVZ,ks-k,j,i) = std::min(0.0, prim(IVZ,ks,j,i));
+	if (NON_BAROTROPIC_EOS){
+	  prim(IPR,ks-k,j,i) = prim(IPR,ks,j,i);
+	}
+
+      }//end R
+    }//end phi
+  }//end z
+
+}
+
+void OutflowOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh){
+  for (int k=1; k<=(NGHOST); ++k) {//z
+    for (int j=js; j<=je; ++j) {//phi
+      for (int i=is; i<=ie; ++i) {//R
+	prim(IDN,ke+k,j,i) = prim(IDN,ke,j,i);
+	prim(IVX,ke+k,j,i) = prim(IVX,ke,j,i);
+	prim(IVY,ke+k,j,i) = prim(IVY,ke,j,i);
+	prim(IVZ,ke+k,j,i) = std::max(0.0, prim(IVZ,ke,j,i));
+	if (NON_BAROTROPIC_EOS){
+	  prim(IPR,ke+k,j,i) = prim(IPR,ke,j,i);
+	}
+
+      }//end R
+    }//end phi
+  }//end z
+
+}
+
+
+
 
 Real massfluxix1(MeshBlock *pmb, int iout){
   Real massflux = 0.0;
