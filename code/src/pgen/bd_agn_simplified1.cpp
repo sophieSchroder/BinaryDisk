@@ -131,7 +131,7 @@ Real Ggrav;
 
 
 // restart simulations
-int is_restart, change_setup;
+int is_restart; //change_setup;
 
 
 
@@ -186,7 +186,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   Real float_min = std::numeric_limits<float>::min();
   dfloor=pin->GetOrAddReal("hydro","dfloor",(1024*(float_min)));
 
-  change_setup = pin->GetOrAddReal("problem", "change_setup", 0);
+  //change_setup = pin->GetOrAddReal("problem", "change_setup", 0);
 
 
   // // enroll the BCs
