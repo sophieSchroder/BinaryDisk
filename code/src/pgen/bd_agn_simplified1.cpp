@@ -265,7 +265,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     // alpha is degree of inclination
     xi[0] = sma*(1.0 + ecc)*cos(alpha);  // apocenter
     xi[1] = 0.0;
-    xi[2] = sma*(1.0 + ecc)*sin(alpha); // will be zero htif alpha = 0
+    xi[2] = sma*(1.0 + ecc)*sin(alpha); // will be zero if alpha = 0
+    
     vcirc = sqrt((GM1+GM2)/sma);
     Omega_orb = vcirc/sma;
 
