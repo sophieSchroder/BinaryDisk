@@ -111,7 +111,6 @@ Real da,pa; // ambient density, pressure
 Real GM2, GM1; // point masses
 Real rsoft2; // softening length of PM 2
 int  include_gas_backreaction, corotating_frame; // flags for output, gas backreaction on EOM, frame choice
-int gradual_m2; // flag for turning on gravity of m2 slowly
 int n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
 Real Omega[3];  // vector rotation of the frame
@@ -160,7 +159,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   GM2 = pin->GetOrAddReal("problem","GM2",1.0);
   r0 = pin->GetOrAddReal("problem","r0",1.0);
   corotating_frame = pin->GetInteger("problem","corotating_frame");
-  gradual_m2 = pin->GetOrAddInteger("problem","gradual_m2",0);
 
   // get parameters for disk set-up
   rho_0 = pin->GetReal("problem","rho_0");
@@ -267,9 +265,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     // alpha is degree of inclination
     xi[0] = sma*(1.0 + ecc)*cos(alpha);  // apocenter
     xi[1] = 0.0;
-    xi[2] = sma*(1.0 + ecc)*sin(alpha); // will be zero if alpha = 0
+    xi[2] = sma*(1.0 + ecc)*sin(alpha); // will be zero htif alpha = 0
 
-
+htththth
     vcirc = sqrt((GM1+GM2)/sma);
     Omega_orb = vcirc/sma;
 
@@ -324,7 +322,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     std::cout << "corotating frame? = "<< corotating_frame<<"\n";
     std::cout << "gas backreaction? = "<< include_gas_backreaction<<"\n";
     std::cout << "particle substepping n = "<<n_particle_substeps<<"\n";
-    std::cout << "gradual m2? = "<<gradual_m2<<"\n";
     if(time==0){
       std::cout << "==========================================================\n";
       std::cout << "==========   Particle        =============================\n";
@@ -458,12 +455,13 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
   // Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r; // SD&SS: See about 3d version - need cyl + radial polar
   Real a_r1 = -GM1/(r*(1./pmb->pcoord->coord_src1_i_(i))+z_cyl*z_cyl); //use cell-volume averaged r (1/src_1) and avg r length, r
   Real a_x, a_y, a_z_cart;
-  if(gradual_m2 == 1 && pmb->pmy_mesh->time < 12.5664){ //and if time is less than 2 orbital periods (4pi)
+  if(pmb->pmy_mesh->time < 14.0){ //let shock move out
     // PM2 gravitational accels in cartesian coordinates
-    Real g_frac = (1/12.5664) * pmb->pmy_mesh->time;
-    a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2) * g_frac;
-    a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2) * g_frac;
-    a_z_cart = - GM2 * fspline(d2,rsoft2) * (z_cart-z_2) * g_frac;
+    // before shock has moved out, don't include effect of companion
+    // SD: confirm there isn't a better way to be doing this
+    a_x = 0.0;
+    a_y = 0.0;
+    a_z_cart = 0.0;
   } else {
     a_x = - GM2 * fspline(d2,rsoft2) * (x-x_2);
     a_y = - GM2 * fspline(d2,rsoft2) * (y-y_2);
