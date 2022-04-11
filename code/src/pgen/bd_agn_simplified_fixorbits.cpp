@@ -274,24 +274,24 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
     // x velocity at apocenter is always zero.
     vi[0] = 0.0;
-    // y velocity at apocenter is at maximum when incl = 0, otherwise part of the
-    // velocity magnitude at apocenter goes to the z direction in if statement below.
-    vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * cos(incl);
 
     // incl_dir=0: rotating around semi major axis; =1 is around semi minor axis
     if(incl_dir==0){
       xi[0] = r_max;
       // xi[1] is set before loop
       xi[2] = 0.0;
-      // vi[0] and vi[1] are set before loop
+      // vi[0] is set before loop
+      // y velocity at apocenter is at maximum when incl = 0, otherwise part of the
+      // velocity magnitude at apocenter goes to the z direction in if statement below.
+      vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * cos(incl);
       vi[2] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * sin(incl);
     } else {
       xi[0] = r_max * cos(incl);
       // xi[1] is set before loop
       xi[2] = r_max * sin(incl);
-      // vi[0] and vi[1] are set before loop
-      // in this setup, the companion starts high and needs an initial negative z vel
-      vi[2] = - sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * sin(incl);
+      // vi[0] is set before loop
+      vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc));
+      vi[2] = 0.0;
     }
 
     // now set the initial condition for Omega
