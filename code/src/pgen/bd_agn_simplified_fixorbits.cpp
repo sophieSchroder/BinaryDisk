@@ -301,9 +301,20 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
     // In the case of a corotating frame,
     // subtract off the frame velocity and set Omega
+    // Modifying omega based on  inclination
     if(corotating_frame == 1){
-      Omega[2] = Omega_orb;
-      vi[1] -=  Omega[2]*xi[0];
+      if(incl_dir == 0){
+        Omega[1] = Omega_orb * sin(incl);
+        Omega[2] = Omega_orb * cos(incl);
+        // SD: need to confirm this
+        vi[1] -=  Omega[2]*xi[0];
+        //not added: do we modify the z velocity like this:vi[2] -=  Omega[1]*xi[0];?
+      } else {
+        Omega[0] = Omega_orb * sin(incl);
+        Omega[2] = Omega_orb * cos(incl);
+        // SD: need to confirm this
+        vi[1] -=  Omega[2]*xi[0];
+      }
     }
 
     // save the ruser_mesh_data variables
