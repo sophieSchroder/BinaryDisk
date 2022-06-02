@@ -116,7 +116,7 @@ Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the seco
 Real Omega[3];  // vector rotation of the frame
 Real ecc, sma, incl; // incl is the angle of inclination of the secondary's orbit
 int  incl_dir; // flag for direction of inclination (0 is rotation about semi-major; 1 is about semi-minor)
-int  start_at_semi_minor_axis; // flag to start companion's orbit at semi-minor axis rather than semi-major
+// int  start_at_semi_minor_axis; // flag to start companion's orbit at semi-minor axis rather than semi-major
                                // axis; 0 is off, 1 is on
 
 int particle_accrete;
@@ -177,7 +177,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   n_particle_substeps = pin->GetInteger("problem","n_particle_substeps");//for the Leap-frog scheme
   particle_accrete = pin->GetInteger("problem","particle_accrete");//companion accretion
   incl_dir = pin->GetInteger("problem","incl_dir");//inclination direction
-  start_at_semi_minor_axis = pin->GetInteger("problem","start_at_semi_minor_axis");//companion starting point
+  // start_at_semi_minor_axis = pin->GetInteger("problem","start_at_semi_minor_axis");//companion starting point
 
 
 
@@ -262,80 +262,65 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 
   //ONLY enter Initial conditions loop if this isn't a restart
-  if(time==0){
-    // Print out some info
-    if (Globals::my_rank==0){
-      std::cout << "*** Setting initial conditions for t=0 ***\n";
-    }
+ if(time==0){
+   // Print out some info
+   if (Globals::my_rank==0){
+     std::cout << "*** Setting initial conditions for t=0 ***\n";
+   }
 
-    // variables in common regardless of orbital inclination direction
-    r_max = sma*(1 + ecc);
-    vcirc = sqrt((GM1+GM2)/sma);
-    Omega_orb = vcirc/sma;
-    semi_minor = sma*sqrt(1 - pow(ecc,2));
+   // variables in common regardless of orbital inclination direction
+   r_max = sma*(1 + ecc);
+   vcirc = sqrt((GM1+GM2)/sma);
+   Omega_orb = vcirc/sma;
 
-    // incl_dir=0: rotating around semi major axis; =1 is around semi minor axis
-    if(incl_dir==0){
-      // start_at_semi_minor_axis==0 means flag is off; orbit starts at semi-major axis
-      if(start_at_semi_minor_axis==0){
-        xi[0] = r_max;
-        xi[1] = 0.0;
-        xi[2] = 0.0;
+   // y position is always 0 to start regardless of inclination direction.
+   xi[1] = 0.0;
 
-        vi[0] = 0.0;
-        // y velocity at apocenter is at maximum when incl = 0, otherwise part of the
-        // velocity magnitude at apocenter goes to the z direction in if statement below.
-        vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * cos(incl);
-        vi[2] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * sin(incl);
-      } else {
-        // start orbit at semi-minor axis
-        // ?? y is not zero. x is not zero. this feels a bit trickier.
-        // will be in terms of semi minor axis, sure, as above, but shifted I want to say?
-        // xi[0] = ;
-        // xi[1] = ;
-        // xi[2] = ;
+   // x velocity at apocenter is always zero.
+   vi[0] = 0.0;
 
-        // velocities here
-      }
+   // incl_dir=0: rotating around semi major axis; =1 is around semi minor axis
+   if(incl_dir==0){
+     xi[0] = r_max;
+     // xi[1] is set before loop
+     xi[2] = 0.0;
+     // vi[0] is set before loop
+     // y velocity at apocenter is at maximum when incl = 0, otherwise part of the
+     // velocity magnitude at apocenter goes to the z direction in if statement below.
+     vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * cos(incl);
+     vi[2] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * sin(incl);
+   } else {
+     xi[0] = r_max * cos(incl);
+     // xi[1] is set before loop
+     xi[2] = r_max * sin(incl);
+     // vi[0] is set before loop
+     vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc));
+     vi[2] = 0.0;
+   }
 
-    } else {
-      if(start_at_semi_minor_axis==0){
-        xi[0] = r_max * cos(incl);
-        xi[1] = 0.0;
-        xi[2] = r_max * sin(incl);
+   // now set the initial condition for Omega
+   Omega[0] = 0.0;
+   Omega[1] = 0.0;
+   Omega[2] = 0.0;
 
-        vi[0] = 0.0;
-        vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc));
-        vi[2] = 0.0;
-      } else {
-        // need to build this
-      }
+   // In the case of a corotating frame,
+   // subtract off the frame velocity and set Omega
+   if(corotating_frame == 1){
+     Omega[2] = Omega_orb;
+     vi[1] -=  Omega[2]*xi[0];
+   }
 
-    }
-
-    // now set the initial condition for Omega
-    Omega[0] = 0.0;
-    Omega[1] = 0.0;
-    Omega[2] = 0.0;
-
-    // In the case of a corotating frame,
-    // subtract off the frame velocity and set Omega
-    if(corotating_frame == 1){
-      Omega[2] = Omega_orb;
-      vi[1] -=  Omega[2]*xi[0];
-    }
-
-    // save the ruser_mesh_data variables
-    for(int i=0; i<3; i++){
-      ruser_mesh_data[0](i)  = xi[i];
-      ruser_mesh_data[1](i)  = vi[i];
-      ruser_mesh_data[2](i)  = Omega[i];
-    }
+   // save the ruser_mesh_data variables
+   for(int i=0; i<3; i++){
+     ruser_mesh_data[0](i)  = xi[i];
+     ruser_mesh_data[1](i)  = vi[i];
+     ruser_mesh_data[2](i)  = Omega[i];
+   }
 
 
-  }else{
-    is_restart=1;
-  }
+ }else{
+   is_restart=1;
+ }
 
   // Print out some info
   if (Globals::my_rank==0){
