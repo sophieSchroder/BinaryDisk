@@ -1460,7 +1460,8 @@ void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,Fa
 void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 		    int is, int ie, int js, int je, int ks, int ke, int ngh){
   // testing temp ceiling - hardcoded for now
-  Real temp_max = 0.08;
+  // 6/17: setting new max temp in ghost cells really low - 10^-3 ~ .001
+  Real temp_max = 0.001;
   for (int k=ks; k<=ke; ++k) {//Phi
     for (int j=js; j<=je; ++j) {//theta
       for (int i=1; i<=(NGHOST); ++i) {//R
