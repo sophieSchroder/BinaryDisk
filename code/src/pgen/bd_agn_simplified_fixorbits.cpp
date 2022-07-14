@@ -859,8 +859,10 @@ Real DenProfileCyl(const Real rad, const Real phi, const Real z) {
   Real p_over_r = p0_over_r0;
   if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
   Real denmid = rho0*std::pow(rad/r0,dslope);
-  std::cout <<"denmid="<<denmid<<"\n";
-  std::cout <<"dfloor="<<dfloor<<"\n";
+  std::cout <<"rho0="<<rho0<<"\n";
+  std::cout <<"rad="<<rad<<"\n";
+  std::cout <<"r0="<<r0<<"\n";
+  std::cout <<"dslope="<<dslope<<"\n";
   Real dentem = denmid*std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
   den = dentem;
   return std::max(den,dfloor);
