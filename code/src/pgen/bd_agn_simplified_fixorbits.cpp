@@ -133,7 +133,7 @@ Real mdot, pdot[3]; // accretion parameters
 Real rho_0, scale_h;
 
 // NEW 7/13
-Real dslope, p0_over_r0, pslope, p0_over_r0, rho0;
+Real dslope, p0_over_r0, pslope, rho0;
 
 
 // for particle output file
