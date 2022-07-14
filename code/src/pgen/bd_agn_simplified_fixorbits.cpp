@@ -189,7 +189,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   incl_dir = pin->GetInteger("problem","incl_dir");//inclination direction
   // start_at_semi_minor_axis = pin->GetInteger("problem","start_at_semi_minor_axis");//companion starting point
 
-  // for disk.cpp add-ins:
+  // NEW 7/13 for disk.cpp add-ins:
   dslope = pin->GetOrAddReal("problem","dslope",0.0);
   // Get parameters of initial pressure and cooling parameters
   if (NON_BAROTROPIC_EOS) {
@@ -789,6 +789,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         // compute initial conditions in cylindrical coordinates
         phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
         VelProfileCyl(rad,phi,z,v1,v2,v3);
+        std::cout << "Entered problem generator!\n";
 
         phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
         phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
