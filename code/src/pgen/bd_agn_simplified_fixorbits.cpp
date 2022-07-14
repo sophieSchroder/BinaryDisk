@@ -67,6 +67,13 @@ Real fspline(Real r, Real eps);
 
 void ParticleAccrete(Mesh *pm, Real(&xi)[3],Real(&vi)[3],Real(&mdot), Real(&pdot)[3]);
 
+// NEW 7/13
+void GetCylCoord(Coordinates *pco,Real &rad,Real &phi,Real &z,int i,int j,int k);
+Real DenProfileCyl(const Real rad, const Real phi, const Real z);
+Real PoverR(const Real rad, const Real phi, const Real z);
+void VelProfileCyl(const Real rad, const Real phi, const Real z,
+                   Real &v1, Real &v2, Real &v3);
+
 // User-defined boundary conditions for disk simulations
 
 void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
@@ -179,6 +186,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   incl_dir = pin->GetInteger("problem","incl_dir");//inclination direction
   // start_at_semi_minor_axis = pin->GetInteger("problem","start_at_semi_minor_axis");//companion starting point
 
+  // for disk.cpp add-ins:
+  dslope = pin->GetOrAddReal("problem","dslope",0.0);
+  // Get parameters of initial pressure and cooling parameters
+  if (NON_BAROTROPIC_EOS) {
+    p0_over_r0 = pin->GetOrAddReal("problem","p0_over_r0",0.0025);
+    pslope = pin->GetOrAddReal("problem","pslope",0.0);
+    gamma_gas = pin->GetReal("hydro","gamma");
+  } else {
+    p0_over_r0=SQR(pin->GetReal("hydro","iso_sound_speed"));
+  }
 
 
   // local vars
@@ -760,36 +777,116 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
         // compute initial conditions in cylindrical coordinates
-	       Real r_local = pcoord->x1v(i);
-         Real z_local = pcoord->x3v(k);
-         Real v_kep = sqrt(GM1/r_local);
-         Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
-         phydro->u(IDN,k,j,i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: change to simplified eq.
-         phydro->u(IM1,k,j,i) = 0.0;
-	       Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
-	       inner_sqrt = std::max(inner_sqrt, 1.0e-10);
-	       Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
-         // if we're in a corotating frame, subtract off angular velocity of the frame
-         if (corotating_frame==1){
-           vtheta = (vtheta/r_local - 1.0) * r_local; // -1.0 is the angular velocity of the frame
-         } else {
-           vtheta = (vtheta/r_local) * r_local;
-         }
-	       phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
-                                //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
-         phydro->u(IM3,k,j,i) = 0.0;
-         // adding pressure from Chan et al; eq 13/14
-         press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
 
-         if (NON_BAROTROPIC_EOS) {
-           phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
-           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
+        GetCylCoord(pcoord,rad,phi,z,i,j,k); // convert to cylindrical coordinates
+        // compute initial conditions in cylindrical coordinates
+        phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
+        VelProfileCyl(rad,phi,z,v1,v2,v3);
+
+        phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
+        phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
+        phydro->u(IM3,k,j,i) = phydro->u(IDN,k,j,i)*v3;
+        if (NON_BAROTROPIC_EOS) {
+          Real p_over_r = PoverR(rad,phi,z);
+          phydro->u(IEN,k,j,i) = p_over_r*phydro->u(IDN,k,j,i)/(gamma_gas - 1.0);
+          phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
                                        + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
+
+
+        // OLD VERSION
+	       // Real r_local = pcoord->x1v(i);
+         // Real z_local = pcoord->x3v(k);
+         // Real v_kep = sqrt(GM1/r_local);
+         // Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
+         // phydro->u(IDN,k,j,i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: change to simplified eq.
+         // phydro->u(IM1,k,j,i) = 0.0;
+	       // Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
+	       // inner_sqrt = std::max(inner_sqrt, 1.0e-10);
+	       // Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
+         // // if we're in a corotating frame, subtract off angular velocity of the frame
+         // if (corotating_frame==1){
+         //   vtheta = (vtheta/r_local - 1.0) * r_local; // -1.0 is the angular velocity of the frame
+         // } else {
+         //   vtheta = (vtheta/r_local) * r_local;
+         // }
+	       // phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
+         //                        //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
+         // phydro->u(IM3,k,j,i) = 0.0;
+         // // adding pressure from Chan et al; eq 13/14
+         // press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
+         //
+         // if (NON_BAROTROPIC_EOS) {
+         //   phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
+         //   phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
+         //                               + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
         }
       }
     }
   }
 
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//!\f transform to cylindrical coordinate
+// NEW 7/13
+
+void GetCylCoord(Coordinates *pco,Real &rad,Real &phi,Real &z,int i,int j,int k) {
+  if (std::strcmp(COORDINATE_SYSTEM, "cylindrical") == 0) {
+    rad=pco->x1v(i);
+    phi=pco->x2v(j);
+    z=pco->x3v(k);
+  } else if (std::strcmp(COORDINATE_SYSTEM, "spherical_polar") == 0) {
+    rad=std::abs(pco->x1v(i)*std::sin(pco->x2v(j)));
+    phi=pco->x3v(i);
+    z=pco->x1v(i)*std::cos(pco->x2v(j));
+  }
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \f  computes density in cylindrical coordinates
+// NEW 7/13
+
+Real DenProfileCyl(const Real rad, const Real phi, const Real z) {
+  Real den;
+  Real p_over_r = p0_over_r0;
+  if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
+  Real denmid = rho0*std::pow(rad/r0,dslope);
+  Real dentem = denmid*std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
+  den = dentem;
+  return std::max(den,dfloor);
+}
+
+//----------------------------------------------------------------------------------------
+//! \f  computes pressure/density in cylindrical coordinates
+// NEW 7/13
+
+Real PoverR(const Real rad, const Real phi, const Real z) {
+  Real poverr;
+  poverr = p0_over_r0*std::pow(rad/r0, pslope);
+  return poverr;
+}
+
+//----------------------------------------------------------------------------------------
+//! \f  computes rotational velocity in cylindrical coordinates
+// NEW 7/13
+
+void VelProfileCyl(const Real rad, const Real phi, const Real z,
+                   Real &v1, Real &v2, Real &v3) {
+  Real p_over_r = PoverR(rad, phi, z);
+  Real vel = (dslope+pslope)*p_over_r/(GM1/rad) + (1.0+pslope)
+             - pslope*rad/std::sqrt(rad*rad+z*z);
+  vel = std::sqrt(GM1/rad)*std::sqrt(vel);
+  if (std::strcmp(COORDINATE_SYSTEM, "cylindrical") == 0) {
+    v1=0.0;
+    v2=vel;
+    v3=0.0;
+  } else if (std::strcmp(COORDINATE_SYSTEM, "spherical_polar") == 0) {
+    v1=0.0;
+    v2=0.0;
+    v3=vel;
+  }
   return;
 }
 
