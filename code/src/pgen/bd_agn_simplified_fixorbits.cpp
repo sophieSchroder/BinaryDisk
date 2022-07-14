@@ -789,8 +789,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         // compute initial conditions in cylindrical coordinates
         phydro->u(IDN,k,j,i) = DenProfileCyl(rad,phi,z);
         VelProfileCyl(rad,phi,z,v1,v2,v3);
-        std::cout << "Entered problem generator!\n";
-
         phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
         phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
         phydro->u(IM3,k,j,i) = phydro->u(IDN,k,j,i)*v3;
@@ -861,6 +859,8 @@ Real DenProfileCyl(const Real rad, const Real phi, const Real z) {
   Real p_over_r = p0_over_r0;
   if (NON_BAROTROPIC_EOS) p_over_r = PoverR(rad, phi, z);
   Real denmid = rho0*std::pow(rad/r0,dslope);
+  std::cout <<"denmid="<<denmid<<"\n";
+  std::cout <<"dfloor="<<dfloor<<"\n";
   Real dentem = denmid*std::exp(GM1/p_over_r*(1./std::sqrt(SQR(rad)+SQR(z))-1./rad));
   den = dentem;
   return std::max(den,dfloor);
