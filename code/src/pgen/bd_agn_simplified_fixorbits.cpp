@@ -132,6 +132,9 @@ Real mdot, pdot[3]; // accretion parameters
 // disk set-up
 Real rho_0, scale_h;
 
+// NEW 7/13
+Real dslope, p0_over_r0, pslope, p0_over_r0, rho0;
+
 
 // for particle output file
 Real trackfile_next_time, trackfile_dt;
@@ -771,6 +774,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   }
 
   Real press_init;
+
+  // NEW 7/13
+  Real rad(0.0), phi(0.0), z(0.0);
+  Real v1(0.0), v2(0.0), v3(0.0);
 
   //  Initialize density and momenta
   for (int k=ks; k<=ke; ++k) {
