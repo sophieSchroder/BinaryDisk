@@ -57,7 +57,6 @@ void SumGasOnParticleAccels(Mesh *pm, Real (&xi)[3],Real (&ag1i)[3], Real (&ag2i
 void particle_step(Real dt,Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]);
 void kick(Real dt,Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]);
 void drift(Real dt,Real (&xi)[3],Real (&vi)[3],Real (&ai)[3]);
-void lowRhoVel3Mod(int i,int j,int k);
 int RefinementCondition(MeshBlock *pmb);
 
 void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]);
@@ -1099,9 +1098,9 @@ void Mesh::UserWorkInLoop(){
 	//the mach number
 	ruser_mesh_data[6](9,k,j,i) += dt*(vtot/sqrt(cs2_c))*pcoord->dx2f(j);
 
-  // if density is low, call function to modify z-vel
+  // if density is low, modify z-vel
   if (rho_c <= (2.0 * dfloor)) {
-    lowRhoVel3Mod(i,j,k);
+    phydro->u(IM3,k,j,i) = 0.0;
   }
 
 
@@ -1542,14 +1541,6 @@ void cross(Real (&A)[3],Real (&B)[3],Real (&AxB)[3]){
   AxB[0] = A[1]*B[2] - A[2]*B[1];
   AxB[1] = A[2]*B[0] - A[0]*B[2];
   AxB[2] = A[0]*B[1] - A[1]*B[0];
-}
-
-
-void lowRhoVel3Mod(int i,int j,int k) {
-  // Do I pass in IM3, or can I just modify it without passing it in?
-  // I think I can just modify it without passing it in. but confirm.
-  phydro->u(IM3,k,j,i) = 0.0;
-return;
 }
 
 //----------------------------------------------------------------------------------------
