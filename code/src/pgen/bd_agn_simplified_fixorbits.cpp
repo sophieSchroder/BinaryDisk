@@ -1031,10 +1031,8 @@ void Mesh::UserWorkInLoop(){
 	Real rho_c = phydro->u(IDN,k,j,i);
 	Real vphi_c = phydro->w(IVY,k,j,i);
 	Real vr_c = phydro->w(IVX,k,j,i);
-  // is phydro->w(IVZ,k,j,i); what we want to modify? or a prim?
 
 	//changing to non-corotating frames
-  // SD: is this affected if we are not in corotating frame?
 	Real Omega_orb = sqrt((GM1+GM2)/sma)/sma;
 	Real v_rotate_c = Omega_orb*rad_c;
 	Real v_rotate_p = Omega_orb*rad_p;
@@ -1098,9 +1096,15 @@ void Mesh::UserWorkInLoop(){
 	//the mach number
 	ruser_mesh_data[6](9,k,j,i) += dt*(vtot/sqrt(cs2_c))*pcoord->dx2f(j);
 
-  // if density is low, modify z-vel
-  if (rho_c <= (2.0 * dfloor)) {
-    phydro->u(IM3,k,j,i) = 0.0;
+  // if density is low and we are above the disk, modify z-vel and density
+  // get cylindrical coordinates
+  Real rad(0.0), phi(0.0), z(0.0);
+  GetCylCoord(pcoord,rad,phi,z,i,j,k);
+  // the second if statement is the hardcoded equation for a line
+  // that sits just above the disk (checked up to t=100)
+  if ((rho_c <= (5.0*dfloor)) && (z>(0.6*rad+0.05))) {
+    phydro->w(IVZ,k,j,i) = 0.0;
+    phydro->u(IDN,k,j,i) = dfloor;
   }
 
 
@@ -1291,6 +1295,7 @@ void ParticleAccrete(Mesh *pm, Real(&xi)[3],Real(&vi)[3], Real(&mdot), Real(&pdo
 	pmb->pcoord->CellVolume(k,j,pmb->is,pmb->ie,vol);
 	for (int i=pmb->is; i<=pmb->ie; ++i) {
 	  //coordinates
+    // SD: does not work for cylindrical coordinates
 	  Real r = pmb->pcoord->x1v(i);
 	  Real th= pmb->pcoord->x2v(j);
 	  Real ph= pmb->pcoord->x3v(k);
