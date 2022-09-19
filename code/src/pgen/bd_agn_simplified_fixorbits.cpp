@@ -529,9 +529,9 @@ void TwoPointMass(MeshBlock *pmb, const Real time, const Real dt,
   // Real a_r1 = -GM1*pmb->pcoord->coord_src1_i_(i)/r; // SD&SS: See about 3d version - need cyl + radial polar
   Real a_r1 = -GM1/(r*(1./pmb->pcoord->coord_src1_i_(i))+z_cyl*z_cyl); //use cell-volume averaged r (1/src_1) and avg r length, r
   Real a_x, a_y, a_z_cart;
-  if(pmb->pmy_mesh->time < 14.0){ //let shock move out
+  if(pmb->pmy_mesh->time < 6.28){ //let shock move out
     // PM2 gravitational accels in cartesian coordinates
-    // before shock has moved out, don't include effect of companion
+    // before shock has moved out, don't include effect of companion. 2pi = 1 orbit
     // SD: confirm there isn't a better way to be doing this
     a_x = 0.0;
     a_y = 0.0;
@@ -1102,7 +1102,7 @@ void Mesh::UserWorkInLoop(){
   GetCylCoord(pcoord,rad,phi,z,i,j,k);
   // the second if statement is the hardcoded equation for a line
   // that sits just above the disk (checked up to t=200)
-  if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.05))) {
+  if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
     phydro->w(IVZ,k,j,i) = 0.0;
     phydro->u(IDN,k,j,i) = dfloor;
   }
