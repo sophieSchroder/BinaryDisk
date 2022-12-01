@@ -222,7 +222,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   sma = pin->GetOrAddReal("problem","sma",2.0); //semi-major axis
   ecc = pin->GetOrAddReal("problem","ecc",0.0); //eccentricity
   incl = pin->GetOrAddReal("problem","incl",0.0); //inclination angle
-  Real Omega_orb, vcirc, r_max, semi_minor, r_sep; //r_max is the maximum distance from the focus of the ellipse
+  Real Omega_orb, vcirc, r_max, r_min, b, r_sep; //r_max is the maximum distance from the focus of the ellipse
 
 
   Real float_min = std::numeric_limits<float>::min();
@@ -318,7 +318,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
      std::cout << "*** Setting initial conditions for t=0 ***\n";
    }
 
-   // variables in common regardless of orbital inclination direction
    r_max = sma*(1 + ecc);
    r_min = sma*(1 - ecc);
    b = sqrt(r_max*r_min); // semi-minor axis
