@@ -143,9 +143,6 @@ int  n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
 Real Omega[3];  // vector rotation of the frame
 Real ecc, sma, incl; // incl is the angle of inclination of the secondary's orbit
-int  incl_dir; // flag for direction of inclination (0 is rotation about semi-major; 1 is about semi-minor)
-// int  start_at_semi_minor_axis; // flag to start companion's orbit at semi-minor axis rather than semi-major
-                               // axis; 0 is off, 1 is on
 
 int particle_accrete;
 Real mdot, pdot[3]; // accretion parameters
@@ -207,8 +204,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   include_gas_backreaction = pin->GetInteger("problem","gas_backreaction");//does the gas changes orbit of companion
   n_particle_substeps = pin->GetInteger("problem","n_particle_substeps");//for the Leap-frog scheme
   particle_accrete = pin->GetInteger("problem","particle_accrete");//companion accretion
-  incl_dir = pin->GetInteger("problem","incl_dir");//inclination direction
-  // start_at_semi_minor_axis = pin->GetInteger("problem","start_at_semi_minor_axis");//companion starting point
 
   // NEW 7/13 for disk.cpp add-ins:
   rho0 = pin->GetReal("problem","rho0");
@@ -227,7 +222,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   sma = pin->GetOrAddReal("problem","sma",2.0); //semi-major axis
   ecc = pin->GetOrAddReal("problem","ecc",0.0); //eccentricity
   incl = pin->GetOrAddReal("problem","incl",0.0); //inclination angle
-  Real Omega_orb, vcirc, r_max, semi_minor; //r_max is the maximum distance from the focus of the ellipse
+  Real Omega_orb, vcirc, r_max, semi_minor, r_sep; //r_max is the maximum distance from the focus of the ellipse
 
 
   Real float_min = std::numeric_limits<float>::min();
@@ -325,33 +320,22 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
    // variables in common regardless of orbital inclination direction
    r_max = sma*(1 + ecc);
+   r_min = sma*(1 - ecc);
+   b = sqrt(r_max*r_min); // semi-minor axis
    vcirc = sqrt((GM1+GM2)/sma);
    Omega_orb = vcirc/sma;
 
-   // y position is always 0 to start regardless of inclination direction.
-   xi[1] = 0.0;
+   xi[0] = sma - r_min;
+   xi[1] = b * cos(incl);
+   xi[2] = b * sin(incl);
 
-   // x velocity at apocenter is always zero.
-   vi[0] = 0.0;
+   // calc distance to starting point from central object
+   // there's probably a better way to do this I feel like this is redundant
+   r_sep = sqrt(pow(xi[0],2) + pow(xi[1],2) + pow(xi[2],2));
 
-   // incl_dir=0: rotating around semi major axis; =1 is around semi minor axis
-   if(incl_dir==0){
-     xi[0] = r_max;
-     // xi[1] is set before loop
-     xi[2] = 0.0;
-     // vi[0] is set before loop
-     // y velocity at apocenter is at maximum when incl = 0, otherwise part of the
-     // velocity magnitude at apocenter goes to the z direction in if statement below.
-     vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * cos(incl);
-     vi[2] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc)) * sin(incl);
-   } else {
-     xi[0] = r_max * cos(incl);
-     // xi[1] is set before loop
-     xi[2] = r_max * sin(incl);
-     // vi[0] is set before loop
-     vi[1] = sqrt(vcirc*vcirc*(1.0 - ecc)/(1.0 + ecc));
-     vi[2] = 0.0;
-   }
+   vi[0] = sqrt(GM1*(2/r_sep - 1/sma));
+   vi[1] = 0.0;
+   vi[2] = 0.0;
 
    // now set the initial condition for Omega
    Omega[0] = 0.0;
