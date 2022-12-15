@@ -320,13 +320,17 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
    r_max = sma*(1 + ecc);
    r_min = sma*(1 - ecc);
-   b = sqrt(r_max*r_min); // semi-minor axis
+   // isolate issue: b
+   // b = sqrt(r_max*r_min); // semi-minor axis
+
    vcirc = sqrt((GM1+GM2)/sma);
    Omega_orb = vcirc/sma;
 
    xi[0] = sma - r_min;
-   xi[1] = b * cos(incl);
-   xi[2] = b * sin(incl);
+   xi[1] = 1.0;
+   xi[2] = 1.0;
+   //xi[1] = b * cos(incl);
+   //xi[2] = b * sin(incl);
 
    // calc distance to starting point from central object
    // there's probably a better way to do this I feel like this is redundant
