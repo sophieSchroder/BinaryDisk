@@ -336,7 +336,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
    // there's probably a better way to do this I feel like this is redundant
    r_sep = sqrt(pow(xi[0],2) + pow(xi[1],2) + pow(xi[2],2));
 
-   vi[0] = sqrt(GM1*(2/r_sep - 1/sma));
+   vi[0] = -sqrt(GM1*(2/r_sep - 1/sma));
    vi[1] = 0.0;
    vi[2] = 0.0;
 
