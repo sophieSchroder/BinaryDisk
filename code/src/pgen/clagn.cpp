@@ -320,7 +320,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
    r_max = sma*(1 + ecc);
    r_min = sma*(1 - ecc);
-   // isolate issue: b
    b = sqrt(r_max*r_min); // semi-minor axis
 
    vcirc = sqrt((GM1+GM2)/sma);
@@ -336,7 +335,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
    // there's probably a better way to do this I feel like this is redundant
    r_sep = sqrt(pow(xi[0],2) + pow(xi[1],2) + pow(xi[2],2));
 
-   vi[0] = -sqrt(GM1*(2/r_sep - 1/sma));
+   //vi[0] = -sqrt(GM1*(2/r_sep - 1/sma));
+   // 1/9 see if this is the issue
+   vi[0] = 0.0;
    vi[1] = 0.0;
    vi[2] = 0.0;
 
