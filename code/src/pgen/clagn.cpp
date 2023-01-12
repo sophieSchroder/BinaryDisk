@@ -326,18 +326,13 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
    Omega_orb = vcirc/sma;
 
    xi[0] = sma - r_min;
-   //xi[1] = 1.0;
-   //xi[2] = 1.0;
    xi[1] = b * cos(incl);
    xi[2] = b * sin(incl);
 
    // calc distance to starting point from central object
-   // there's probably a better way to do this I feel like this is redundant
    r_sep = sqrt(pow(xi[0],2) + pow(xi[1],2) + pow(xi[2],2));
 
-   //vi[0] = -sqrt(GM1*(2/r_sep - 1/sma));
-   // 1/9 see if this is the issue
-   vi[0] = 0.0;
+   vi[0] = -sqrt(GM1*(2/r_sep - 1/sma));
    vi[1] = 0.0;
    vi[2] = 0.0;
 
