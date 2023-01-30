@@ -129,7 +129,7 @@ void KeplerianVel(const Real rad, const Real theta, const Real phi, Real &v1, Re
 
 // problem parameters which are useful to make global to this file
 Real r0, gamma_gas;
-Real dfloor;
+Real dfloor, pfloor;
 
 // global (to this file) problem parameters
 Real da,pa; // ambient density, pressure
@@ -227,6 +227,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
   Real float_min = std::numeric_limits<float>::min();
   dfloor=pin->GetOrAddReal("hydro","dfloor",(1024*(float_min)));
+  pfloor=pin->GetReal("hydro","pfloor");
 
   //change_setup = pin->GetOrAddReal("problem", "change_setup", 0);
 
@@ -1085,9 +1086,13 @@ void Mesh::UserWorkInLoop(){
   GetCylCoord(pcoord,rad,phi,z,i,j,k);
   // the second if statement is the hardcoded equation for a line
   // that sits just above the disk (checked up to t=200)
+
   if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
     phydro->w(IVZ,k,j,i) = 0.0;
     phydro->u(IDN,k,j,i) = dfloor;
+    if (NON_BAROTROPIC_EOS) {
+        phydro->w(IPR,k,j,i) = pfloor;
+    }
   }
 
 
