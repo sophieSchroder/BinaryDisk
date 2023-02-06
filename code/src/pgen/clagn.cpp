@@ -1087,13 +1087,13 @@ void Mesh::UserWorkInLoop(){
   // the second if statement is the hardcoded equation for a line
   // that sits just above the disk (checked up to t=200)
 
-  if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
-    phydro->w(IVZ,k,j,i) = 0.0;
-    phydro->u(IDN,k,j,i) = dfloor;
-    if (NON_BAROTROPIC_EOS) {
-        phydro->w(IPR,k,j,i) = pfloor;
-    }
-  }
+  // if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
+  //   phydro->w(IVZ,k,j,i) = 0.0;
+  //   phydro->u(IDN,k,j,i) = dfloor;
+  //   if (NON_BAROTROPIC_EOS) {
+  //       phydro->w(IPR,k,j,i) = pfloor;
+  //   }
+  // }
 
 
       }//end phi
