@@ -1087,13 +1087,13 @@ void Mesh::UserWorkInLoop(){
   // the second if statement is the hardcoded equation for a line
   // that sits just above the disk (checked up to t=200)
 
-  // if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
-  //   phydro->w(IVZ,k,j,i) = 0.0;
-  //   phydro->u(IDN,k,j,i) = dfloor;
-  //   if (NON_BAROTROPIC_EOS) {
-  //       phydro->w(IPR,k,j,i) = pfloor;
-  //   }
-  // }
+  if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
+    phydro->w(IVZ,k,j,i) = 0.0;
+    phydro->u(IDN,k,j,i) = dfloor;
+    if (NON_BAROTROPIC_EOS) {
+        phydro->w(IPR,k,j,i) = pfloor;
+    }
+  }
 
 
       }//end phi
@@ -1551,7 +1551,8 @@ void DiskInnerX1(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
         GetCylCoord(pco,rad,phi,z,il-i,j,k);
         prim(IDN,k,j,il-i) = DenProfileCyl(rad,phi,z);
         VelProfileCyl(rad,phi,z,v1,v2,v3);
-        prim(IM1,k,j,il-i) = v1;
+        // prim(IM1,k,j,il-i) = v1;
+        prim(IM1,k,j,il-i) = std::min(0.0, prim(IM1,k,j,il));
         prim(IM2,k,j,il-i) = v2;
         prim(IM3,k,j,il-i) = v3;
         if (NON_BAROTROPIC_EOS)
@@ -1667,62 +1668,7 @@ void DiskOuterX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
 }
 
 
-//
-// void AGNDiskOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
-// 		      int is, int ie, int js, int je, int ks, int ke, int ngh){
-//   int L1flag = 0;
-//   Real local_dens = 1.0;
-//   Real local_vr = -0.01;
-//
-//   Real local_press = 0.01;
-//   Real local_cs = 0.1;
-//   Real rad(0.0), phi(0.0), z(0.0);
-//   Real v1(0.0), v2(0.0), v3(0.0);
-//
-//   Real vcirc = sqrt((GM1+GM2)/sma);
-//   Real Omega_orb = vcirc/sma;
-//
-//   for (int k=ks; k<=ke; ++k) {//z
-//     for (int j=js; j<=je; ++j) {//phi
-//       Real phi_coord = pco->x2v(j);
-//       for (int i=1; i<=(NGHOST); ++i) {//R
-//         // set disk conditions in ghost cells to fill disk
-//         Real r_local = pco->x1v(ie+i); // ask XH: is this r coord? what is ie+i
-//         Real z_local = pco->x3v(ie+i); //pco vs pcoord?
-//         Real v_kep = sqrt(GM1/r_local);
-//         //Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
-//         //prim(IDN,k,j,ie+i) = rho_0*exp(-delta_phi/pow(scale_h*v_kep,2));
-//         prim(IDN,k,j,ie+i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: simplified version
-//         prim(IVX,k,j,ie+i) = 0.0;
-//         //prim(IVY,k,j,ie+i) = (pow(v_kep,2) - (0.5*pow(v_kep*z_local/r_local,2)
-//         //                                      +pow(scale_h*v_kep,2)));
-//         // why is the velocity above squared? essentially above is IM2 from pgen but squared...
-//         // replacing it below with pgen version
-//         Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
-//         inner_sqrt = std::max(inner_sqrt, 0.0);
-//         Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
-//         // if we're in a corotating frame, subtract off angular velocity of the frame
-//         if (corotating_frame==1){
-//           vtheta = (vtheta/r_local - 1.0) * r_local; // -1.0 is the angular velocity of the frame
-//         } else {
-//           vtheta = (vtheta/r_local) * r_local;
-//         }
-//         prim(IVY,k,j,ie+i) = vtheta;
-//         prim(IVZ,k,j,ie+i) = 0.0;
-//
-//         if (NON_BAROTROPIC_EOS) {
-//              prim(IPR,k,j,ie+i) = prim(IDN,k,j,ie+i)*pow(scale_h*v_kep,2);
-//         }
-//
-//
-//       }//end R
-//     }//end theta
-//   }//end Phi
-//
-//
-// }
-//
-//
+
 // void OutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b, Real time, Real dt,
 // 		    int is, int ie, int js, int je, int ks, int ke, int ngh){
 //   // testing temp ceiling - hardcoded for now
