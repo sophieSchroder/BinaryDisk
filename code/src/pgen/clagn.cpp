@@ -143,12 +143,10 @@ int  n_particle_substeps; // substepping of particle integration
 Real xi[3], vi[3], agas1i[3], agas2i[3]; // cartesian positions/vels of the secondary object, gas->particle acceleration
 Real Omega[3];  // vector rotation of the frame
 Real ecc, sma, incl; // incl is the angle of inclination of the secondary's orbit
+Real eccentric_anomaly; 
 
 int particle_accrete;
 Real mdot, pdot[3]; // accretion parameters
-
-// disk set-up
-Real rho_0, scale_h;
 
 // NEW 7/13
 Real dslope, p0_over_r0, pslope, rho0;
@@ -178,11 +176,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   // read in some global params (to this file)
 
   // first non-mode-dependent settings
-  //pressure and density of background medium
-  pa   = pin->GetOrAddReal("problem","pamb",1.0);
-  da   = pin->GetOrAddReal("problem","damb",1.0);
   gamma_gas = pin->GetReal("hydro","gamma");
-
 
   // Get parameters for gravitatonal potential of central point mass and companion
   Ggrav = pin->GetOrAddReal("problem","Ggrav",6.67408e-8);
@@ -190,10 +184,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   GM2 = pin->GetOrAddReal("problem","GM2",1.0);
   r0 = pin->GetOrAddReal("problem","r0",1.0);
   corotating_frame = pin->GetInteger("problem","corotating_frame");
-
-  // get parameters for disk set-up
-  rho_0 = pin->GetReal("problem","rho_0");
-  scale_h = pin->GetReal("problem","scale_h");
 
   // softening of companion gravity
   rsoft2 = pin->GetOrAddReal("problem","rsoft2",0.1);
@@ -222,8 +212,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   sma = pin->GetOrAddReal("problem","sma",2.0); //semi-major axis
   ecc = pin->GetOrAddReal("problem","ecc",0.0); //eccentricity
   incl = pin->GetOrAddReal("problem","incl",0.0); //inclination angle
-  Real Omega_orb, vcirc, r_max, r_min, b, r_sep; //r_max is the maximum distance from the focus of the ellipse
-
+  eccentric_anomaly = pin->GetOrAddReal("problem","eccentric_anomaly",1.571); //determines where orbit starts
+  Real Omega_orb, v_circ, r_max, r_min, b, r_sep; //r_max is the maximum distance from the focus of the ellipse
+  Real sma_direction_coord, b_direction_coord; //for equation of ellipse, instead of x and y
+  Real v_tot, v_sma_direction_coord, v_b_direction_coord; //to calculate component starting velocities
 
   Real float_min = std::numeric_limits<float>::min();
   dfloor=pin->GetOrAddReal("hydro","dfloor",(1024*(float_min)));
@@ -323,19 +315,36 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
    r_min = sma*(1 - ecc);
    b = sqrt(r_max*r_min); // semi-minor axis
 
-   vcirc = sqrt((GM1+GM2)/sma);
-   Omega_orb = vcirc/sma;
+   v_circ = sqrt((GM1+GM2)/sma);
+   Omega_orb = v_circ/sma;
+   
+   // in the orbital plane of the semi-major axis
+   sma_direction_coord = sma * cos(eccentric_anomaly) + (sma-r_min);
+   // in the orbital plane of the semi-minor axis
+   b_direction_coord = b * sin(eccentric_anomaly);
 
-   xi[0] = sma - r_min;
-   xi[1] = b * cos(incl);
-   xi[2] = b * sin(incl);
+   // transforms above ellipse into x,y,z in code with effects of inclination
+   xi[0] = sma_direction_coord;
+   xi[1] = b_direction_coord * cos(incl);
+   xi[2] = b_direction_coord * sin(incl);
 
+   // equations needed to calculate starting velocity:
    // calc distance to starting point from central object
    r_sep = sqrt(pow(xi[0],2) + pow(xi[1],2) + pow(xi[2],2));
-
-   vi[0] = -sqrt(GM1*(2/r_sep - 1/sma));
-   vi[1] = 0.0;
-   vi[2] = 0.0;
+   // calc overall velocity at starting point
+   v_tot = sqrt((GM1+GM2)*(2/r_sep - 1/sma));
+   // calc true anomaly from eccentric anomaly 
+   true_anomaly = 2 * atan(sqrt((1 + ecc)/(1 - ecc) * tan(eccentric_anomaly / 2.0)));
+   // split components of velocity to components along semi-major and minor axes
+   v_sma_direction_coord = v_tot * (-sin(true_anomaly) / 
+                                    sqrt(1 + SQR(ecc) + (2 * ecc * cos(true_anomaly))));
+   v_b_direction_coord = v_tot * ((ecc + cos(true_anomaly)) / 
+                                   sqrt(1 + SQR(ecc) + (2 * ecc * cos(true_anomaly))));
+ 
+   // transforms ellipse velocity components to x,y,z in code with inclination
+   vi[0] = v_sma_direction_coord;
+   vi[1] = v_b_direction_coord * cos(incl);
+   vi[2] = v_b_direction_coord * sin(incl);
 
    // now set the initial condition for Omega
    Omega[0] = 0.0;
@@ -818,32 +827,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
                                        + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
 
 
-        // OLD VERSION
-	       // Real r_local = pcoord->x1v(i);
-         // Real z_local = pcoord->x3v(k);
-         // Real v_kep = sqrt(GM1/r_local);
-         // Real delta_phi =  0.5*pow(v_kep,2)*pow(z_local/r_local,2);
-         // phydro->u(IDN,k,j,i) = rho_0*exp(-0.5*pow(z_local/r_local/scale_h,2));//XS: change to simplified eq.
-         // phydro->u(IM1,k,j,i) = 0.0;
-	       // Real inner_sqrt = 1-0.5*pow(z_local/r_local,2)-pow(scale_h,2); // SD: inner part of vtheta
-	       // inner_sqrt = std::max(inner_sqrt, 1.0e-10);
-	       // Real vtheta = v_kep*sqrt(inner_sqrt);//XS: change to simplified eq.
-         // // if we're in a corotating frame, subtract off angular velocity of the frame
-         // if (corotating_frame==1){
-         //   vtheta = (vtheta/r_local - 1.0) * r_local; // -1.0 is the angular velocity of the frame
-         // } else {
-         //   vtheta = (vtheta/r_local) * r_local;
-         // }
-	       // phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*vtheta; //phydro->u(IDN,k,j,i)*(pow(v_kep,2) - (0.5 *
-         //                        //pow(v_kep*z_local/r_local,2)+pow(scale_h*v_kep,2)));
-         // phydro->u(IM3,k,j,i) = 0.0;
-         // // adding pressure from Chan et al; eq 13/14
-         // press_init = phydro->u(IDN,k,j,i)*pow(scale_h*v_kep,2);
-         //
-         // if (NON_BAROTROPIC_EOS) {
-         //   phydro->u(IEN,k,j,i) = press_init/(gamma_gas - 1.0);
-         //   phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))+SQR(phydro->u(IM2,k,j,i))
-         //                               + SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
         }
       }
     }
