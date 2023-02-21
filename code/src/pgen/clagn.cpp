@@ -995,7 +995,7 @@ void Mesh::UserWorkInLoop(){
       for(int j=js; j<=je; j++){
 
 	for (int n=0; n<(NHYDRO);n++){//loop over 0-4 for IDN, IVX, IVY, IVZ, IPR
-	  if (std::isnan(phydro->u(n,k,j,i)){//if anything is NAN
+	  if (std::isnan(phydro->u(n,k,j,i))){//if anything is NAN
 	      printf("block: %d, n: %d ,k: %d,j: %d,i: %d\n", pmb->gid, n, k,j,i);//print mb index, variable index (IDN...), cell index
 	      printf("x1v: %g, x2v:%g, x3v:%g\n",pmb->pcoord->x1v(i), pmb->pcoord->x2v(j),pmb->pcoord->x3v(k));//coordinate
 	      abort();
@@ -1629,7 +1629,8 @@ void DiskInnerX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
         VelProfileCyl(rad,phi,z,v1,v2,v3);
         prim(IM1,kl-k,j,i) = v1;
         prim(IM2,kl-k,j,i) = v2;
-        prim(IM3,kl-k,j,i) = v3;
+        //prim(IM3,kl-k,j,i) = v3;
+        prim(IM3,kl-k,j,i) = std::min(0.0, prim(IM3,kl,j,i)); 
         if (NON_BAROTROPIC_EOS)
           prim(IEN,kl-k,j,i) = PoverR(rad, phi, z)*prim(IDN,kl-k,j,i);
       }
@@ -1650,7 +1651,8 @@ void DiskOuterX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
         VelProfileCyl(rad,phi,z,v1,v2,v3);
         prim(IM1,ku+k,j,i) = v1;
         prim(IM2,ku+k,j,i) = v2;
-        prim(IM3,ku+k,j,i) = v3;
+        // prim(IM3,ku+k,j,i) = v3; 
+        prim(IM3,ku+k,j,i) = std::max(0.0, prim(IM3,ku,j,i)); 
         if (NON_BAROTROPIC_EOS)
           prim(IEN,ku+k,j,i) = PoverR(rad, phi, z)*prim(IDN,ku+k,j,i);
       }
