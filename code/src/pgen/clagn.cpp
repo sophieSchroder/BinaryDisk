@@ -215,7 +215,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   eccentric_anomaly = pin->GetOrAddReal("problem","eccentric_anomaly",1.571); //determines where orbit starts
   Real Omega_orb, v_circ, r_max, r_min, b, r_sep; //r_max is the maximum distance from the focus of the ellipse
   Real sma_direction_coord, b_direction_coord; //for equation of ellipse, instead of x and y
-  Real v_tot, v_sma_direction_coord, v_b_direction_coord; //to calculate component starting velocities
+  Real v_tot, true_anomaly, v_sma_direction_coord, v_b_direction_coord; //to calculate component starting velocities
 
   Real float_min = std::numeric_limits<float>::min();
   dfloor=pin->GetOrAddReal("hydro","dfloor",(1024*(float_min)));
