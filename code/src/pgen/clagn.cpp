@@ -1011,6 +1011,14 @@ void Mesh::UserWorkInLoop(){
 
       for(int j=js; j<=je; j++){
 
+	for (int n=0; n<(NHYDRO);n++){//loop over 0-4 for IDN, IVX, IVY, IVZ, IPR
+	  if (std::isnan(phydro->u(n,k,j,i)){//if anything is NAN
+	      printf("block: %d, n: %d ,k: %d,j: %d,i: %d\n", pmb->gid, n, k,j,i);//print mb index, variable index (IDN...), cell index
+	      printf("x1v: %g, x2v:%g, x3v:%g\n",pmb->pcoord->x1v(i), pmb->pcoord->x2v(j),pmb->pcoord->x3v(k));//coordinate
+	      abort();
+	    }	  
+	  }//end NHYDRO
+
 	//cell center variables
 	Real rho_c = phydro->u(IDN,k,j,i);
 	Real vphi_c = phydro->w(IVY,k,j,i);
