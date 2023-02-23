@@ -389,6 +389,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     std::cout << "corotating frame? = "<< corotating_frame<<"\n";
     std::cout << "gas backreaction? = "<< include_gas_backreaction<<"\n";
     std::cout << "particle substepping n = "<<n_particle_substeps<<"\n";
+    std::cout << "b = "<<b<<"\n";
+    std::cout << "b_direction_coord = "<<b_direction_coord<<"\n";
     if(time==0){
       std::cout << "==========================================================\n";
       std::cout << "==========   Particle        =============================\n";
