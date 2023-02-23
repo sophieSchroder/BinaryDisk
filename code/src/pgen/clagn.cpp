@@ -334,7 +334,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
    // calc overall velocity at starting point
    v_tot = sqrt((GM1+GM2)*(2/r_sep - 1/sma));
    // calc true anomaly from eccentric anomaly 
-   true_anomaly = 2 * atan(sqrt((1 + ecc)/(1 - ecc) * tan(eccentric_anomaly / 2.0)));
+   true_anomaly = 2 * atan(sqrt((1 + ecc)/(1 - ecc)) * tan(eccentric_anomaly / 2.0));
    // split components of velocity to components along semi-major and minor axes
    v_sma_direction_coord = v_tot * (-sin(true_anomaly) / 
                                     sqrt(1 + SQR(ecc) + (2 * ecc * cos(true_anomaly))));
@@ -375,7 +375,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     std::cout << "==========================================================\n";
     std::cout << "==========   SIMULATION INFO =============================\n";
     std::cout << "==========================================================\n";
-    std::cout << "time =" << time << "\n";
+    std::cout << "time = " << time << "\n";
     std::cout << "Ggrav = "<< Ggrav <<"\n";
     std::cout << "gamma = "<< gamma_gas <<"\n";
     std::cout << "GM1 = "<< GM1 <<"\n";
@@ -389,8 +389,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     std::cout << "corotating frame? = "<< corotating_frame<<"\n";
     std::cout << "gas backreaction? = "<< include_gas_backreaction<<"\n";
     std::cout << "particle substepping n = "<<n_particle_substeps<<"\n";
-    std::cout << "b = "<<b<<"\n";
-    std::cout << "b_direction_coord = "<<b_direction_coord<<"\n";
     if(time==0){
       std::cout << "==========================================================\n";
       std::cout << "==========   Particle        =============================\n";
@@ -1077,17 +1075,19 @@ void Mesh::UserWorkInLoop(){
   // get cylindrical coordinates
   Real rad(0.0), phi(0.0), z(0.0);
   GetCylCoord(pcoord,rad,phi,z,i,j,k);
-  // the second if statement is the hardcoded equation for a line
-  // that sits just above the disk (checked up to t=200)
 
-  if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
-    phydro->w(IVZ,k,j,i) = 0.0;
-    phydro->u(IDN,k,j,i) = dfloor;
-    if (NON_BAROTROPIC_EOS) {
-        phydro->w(IPR,k,j,i) = pfloor;
+  // wait for disk to settle. see if this should be updated.
+  if (time < 14.0) {
+    // the second if statement is the hardcoded equation for a line
+    // that sits just above the disk (checked up to t=200)
+    if ((rho_c <= (5.0*dfloor)) && (std::abs(z)>(0.6*rad+0.2))) {
+      phydro->w(IVZ,k,j,i) = 0.0;
+      phydro->u(IDN,k,j,i) = dfloor;
+      if (NON_BAROTROPIC_EOS) {
+          phydro->w(IPR,k,j,i) = pfloor;
+      }
     }
   }
-
 
       }//end phi
     }
