@@ -1546,8 +1546,10 @@ void DiskInnerX1(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
         VelProfileCyl(rad,phi,z,v1,v2,v3);
         // prim(IM1,k,j,il-i) = v1;
         prim(IM1,k,j,il-i) = std::min(0.0, prim(IM1,k,j,il));
-        prim(IM2,k,j,il-i) = v2;
-        prim(IM3,k,j,il-i) = v3;
+        //prim(IM2,k,j,il-i) = v2;
+        prim(IM2,k,j,il-i) = prim(IM2,k,j,il);
+       //prim(IM3,k,j,il-i) = v3;
+        prim(IM3,k,j,il-i) = prim(IM3,k,j,il);
         if (NON_BAROTROPIC_EOS)
           prim(IEN,k,j,il-i) = PoverR(rad, phi, z)*prim(IDN,k,j,il-i);
       }
@@ -1629,8 +1631,10 @@ void DiskInnerX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
         GetCylCoord(pco,rad,phi,z,i,j,kl-k);
         prim(IDN,kl-k,j,i) = DenProfileCyl(rad,phi,z);
         VelProfileCyl(rad,phi,z,v1,v2,v3);
-        prim(IM1,kl-k,j,i) = v1;
-        prim(IM2,kl-k,j,i) = v2;
+        //prim(IM1,kl-k,j,i) = v1;
+        prim(IM1,kl-k,j,i) = prim(IM1,kl,j,i);
+        //prim(IM2,kl-k,j,i) = v2;
+        prim(IM2,kl-k,j,i) = prim(IM2,kl,j,i);
         //prim(IM3,kl-k,j,i) = v3;
         prim(IM3,kl-k,j,i) = std::min(0.0, prim(IM3,kl,j,i)); 
         if (NON_BAROTROPIC_EOS)
@@ -1651,8 +1655,10 @@ void DiskOuterX3(MeshBlock *pmb,Coordinates *pco, AthenaArray<Real> &prim, FaceF
         GetCylCoord(pco,rad,phi,z,i,j,ku+k);
         prim(IDN,ku+k,j,i) = DenProfileCyl(rad,phi,z);
         VelProfileCyl(rad,phi,z,v1,v2,v3);
-        prim(IM1,ku+k,j,i) = v1;
-        prim(IM2,ku+k,j,i) = v2;
+        //prim(IM1,ku+k,j,i) = v1;
+        prim(IM1,ku+k,j,i) = prim(IM1,ku,j,i);
+        //prim(IM2,ku+k,j,i) = v2;
+        prim(IM2,ku+k,j,i) = prim(IM2,ku,j,i);
         // prim(IM3,ku+k,j,i) = v3; 
         prim(IM3,ku+k,j,i) = std::max(0.0, prim(IM3,ku,j,i)); 
         if (NON_BAROTROPIC_EOS)
