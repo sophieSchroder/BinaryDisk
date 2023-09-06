@@ -998,6 +998,7 @@ void Mesh::UserWorkInLoop(){
 	  if (std::isnan(phydro->u(n,k,j,i))){//if anything is NAN
 	      printf("block: %d, n: %d ,k: %d,j: %d,i: %d\n", pmb->gid, n, k,j,i);//print mb index, variable index (IDN...), cell index
 	      printf("x1v: %g, x2v:%g, x3v:%g\n",pmb->pcoord->x1v(i), pmb->pcoord->x2v(j),pmb->pcoord->x3v(k));//coordinate
+        printf("rho_c: %g, press_c:%g, vr_c:%g, vphi_c:%g, vz_c:%g\n",phydro->u(IDN,k,j,i), phydro->w(IPR,k,j,i), phydro->w(IVX,k,j,i), phydro->w(IVY,k,j,i),phydro->w(IVZ,k,j,i));//coordinate
 	      abort();
 	    }	  
 	  }//end NHYDRO
